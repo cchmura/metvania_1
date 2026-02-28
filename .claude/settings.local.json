@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet --version)",
+      "Bash(cat:*)",
+      "Bash(dotnet build:*)",
+      "Bash(python3:*)",
+      "Bash(grep:*)"
+    ]
+  }
+}
