@@ -16,7 +16,7 @@ public partial class Shielder : EnemyBase
 
 	protected override void EnemyInit()
 	{
-		Sprite.Texture = SpriteFactory.ShielderSprite();
+		Sprite.Texture = AssetLoader.ShielderSprite();
 
 		// Intercept damage manually — set hurtbox Health to null
 		EnemyHurtbox.Health = null;

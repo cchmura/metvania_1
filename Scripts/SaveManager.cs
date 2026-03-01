@@ -23,6 +23,8 @@ public partial class SaveManager : Node
 		public bool BossDefeated { get; set; }
 		public List<string> VisitedRooms { get; set; } = new();
 		public int WeaponTier { get; set; } = 1;
+		public string CurrentLevelId { get; set; }
+		public List<string> DefeatedBosses { get; set; }
 	}
 
 	public class SlotInfo
@@ -31,6 +33,7 @@ public partial class SaveManager : Node
 		public int MaxHealth { get; set; }
 		public List<string> Abilities { get; set; }
 		public bool BossDefeated { get; set; }
+		public string CurrentLevelId { get; set; }
 	}
 
 	public override void _Ready()
@@ -85,6 +88,8 @@ public partial class SaveManager : Node
 			MaxHealth = gameState.MaxHealth,
 			BossDefeated = gameState.BossDefeated,
 			WeaponTier = gameState.WeaponTier,
+			CurrentLevelId = gameState.CurrentLevelId,
+			DefeatedBosses = new List<string>(gameState.DefeatedBosses),
 		};
 
 		var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
@@ -114,10 +119,23 @@ public partial class SaveManager : Node
 		gameState.PlayerSpawnPosition = new Vector2(data.PlayerX, data.PlayerY);
 		gameState.CurrentRoom = data.CurrentRoom;
 		gameState.MaxHealth = data.MaxHealth;
-		gameState.BossDefeated = data.BossDefeated;
 		gameState.WeaponTier = data.WeaponTier > 0 ? data.WeaponTier : 1;
+		gameState.CurrentLevelId = data.CurrentLevelId ?? "main";
 
-		GD.Print($"Game loaded from slot {ActiveSlot}.");
+		// Restore defeated bosses with legacy migration
+		if (data.DefeatedBosses != null)
+		{
+			gameState.DefeatedBosses = new HashSet<string>(data.DefeatedBosses);
+		}
+		else
+		{
+			gameState.DefeatedBosses = new HashSet<string>();
+			// Legacy: old saves stored BossDefeated as a flat bool for "main"
+			if (data.BossDefeated)
+				gameState.DefeatedBosses.Add("main");
+		}
+
+		GD.Print($"Game loaded from slot {ActiveSlot} (level: {gameState.CurrentLevelId}).");
 	}
 
 	public bool HasSaveFile() => FileAccess.FileExists(GetSlotPath(ActiveSlot));
@@ -147,6 +165,7 @@ public partial class SaveManager : Node
 			MaxHealth = data.MaxHealth,
 			Abilities = data.UnlockedAbilities,
 			BossDefeated = data.BossDefeated,
+			CurrentLevelId = data.CurrentLevelId ?? "main",
 		};
 	}
 

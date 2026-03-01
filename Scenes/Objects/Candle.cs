@@ -13,7 +13,7 @@ public partial class Candle : StaticBody2D
 		CollisionMask = 0;
 
 		_sprite = new Sprite2D();
-		_sprite.Texture = SpriteFactory.CandleSprite();
+		_sprite.Texture = AssetLoader.CandleSprite();
 		AddChild(_sprite);
 
 		_health = new HealthComponent();
@@ -73,7 +73,7 @@ public partial class Candle : StaticBody2D
 		pickup.AddChild(shape);
 
 		var sprite = new Sprite2D();
-		sprite.Texture = SpriteFactory.WeaponUpgradeSprite();
+		sprite.Texture = AssetLoader.WeaponUpgradeSprite();
 		pickup.AddChild(sprite);
 
 		// Bob animation

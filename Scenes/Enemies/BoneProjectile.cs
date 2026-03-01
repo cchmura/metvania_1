@@ -23,7 +23,7 @@ public partial class BoneProjectile : Area2D
 		CollisionMask = 1; // Detect world geometry
 
 		_sprite = new Sprite2D();
-		_sprite.Texture = SpriteFactory.BoneProjectileSprite();
+		_sprite.Texture = AssetLoader.BoneProjectileSprite();
 		AddChild(_sprite);
 
 		var bodyShape = new CollisionShape2D();

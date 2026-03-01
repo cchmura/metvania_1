@@ -14,7 +14,7 @@ public partial class Shooter : EnemyBase
 
 	protected override void EnemyInit()
 	{
-		Sprite.Texture = SpriteFactory.ShooterSprite();
+		Sprite.Texture = AssetLoader.ShooterSprite();
 		_projectileScene = GD.Load<PackedScene>("res://Scenes/Enemies/Projectile.tscn");
 		_fireTimer = FireInterval;
 	}

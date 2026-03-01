@@ -17,7 +17,7 @@ public partial class Flyer : EnemyBase
 
 	protected override void EnemyInit()
 	{
-		Sprite.Texture = SpriteFactory.FlyerSprite();
+		Sprite.Texture = AssetLoader.FlyerSprite();
 		_homePosition = GlobalPosition;
 	}
 

@@ -13,7 +13,7 @@ public partial class Crawler : EnemyBase
 
 	protected override void EnemyInit()
 	{
-		Sprite.Texture = SpriteFactory.CrawlerSprite();
+		Sprite.Texture = AssetLoader.CrawlerSprite();
 
 		// Wall detector — horizontal ray in movement direction
 		_wallDetector = new RayCast2D();

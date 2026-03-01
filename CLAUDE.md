@@ -3,11 +3,13 @@
 2D metroidvania vertical slice in Godot 4.6 with C#.
 
 ## Architecture
-- Single linear level: 120x11 tiles (Castlevania-style, horizontal scroll only)
-- Level defined as ASCII art in RoomData.cs (`RoomDef`), painted via TileMapLayer
+- Multiple linear levels: 120x11 tiles each (Castlevania-style, horizontal scroll only)
+- Levels defined as ASCII art in JSON files (`Levels/*.json`), loaded by RoomData.cs (dictionary cache), painted via TileMapLayer
+- Level transitions: beat boss → goal marker → press E → auto-walk → fade to black → next level loads (or return to title)
+- Entity Registry (`Scripts/EntityRegistry.cs`): maps tile chars → spawn behavior (tile/marker/scene/enemy/custom)
 - Camera2D follows player, limits clamp to level bounds, scrolls horizontally only
 - Pit death: falling below the level triggers death/respawn
-- Autoloads: GameState (ability/item/room tracking), SaveManager (3-slot JSON to user://saves/), EffectsManager (hit freeze/shake/particles), AudioManager (SFX/Music buses + procedural music + crossfade)
+- Autoloads: GameState (ability/item/room/level tracking, per-level boss defeats), SaveManager (3-slot JSON to user://saves/), EffectsManager (hit freeze/shake/particles), AudioManager (SFX/Music buses + procedural music + crossfade)
 - Title screen: main menu → slot select → settings, launches World scene
 - Pause menu: Escape → Resume/Map/Settings/Quit to Title
 - Reusable combat components: HealthComponent, Hitbox, Hurtbox
@@ -15,15 +17,28 @@
 - All visuals generated procedurally via SpriteFactory (no image assets)
 
 ## Level Layout
-Single "main" room, 120×11 tiles, 5 zones (24 cols each):
 
+### Level 1: "main" — The Depths (120×11, 5 zones)
 | Zone | Cols | Theme | Contents |
 |------|------|-------|----------|
 | 1 | 0-23 | Courtyard (open sky) | P spawn, 2 crawlers, 1 flyer, 1 bat, 1 candle |
 | 2 | 24-47 | Castle Entrance | Save point, spikes, 2 crawlers, 1 flyer, 1 skeleton, 1 bat, 1 candle |
 | 3 | 48-71 | Great Hall | Double jump orb, H-platform, shooter, shielder, charger, 1 ghost, 1 knight, 1 candle |
 | 4 | 72-95 | Inner Corridor | Dash orb, F-platform, dropper, shooter, 2 skeletons, 1 ghost, 1 bat, 1 candle, spikes, pits |
-| 5 | 96-119 | Boss Chamber | Boss lock, Guardian spawn, enclosed arena |
+| 5 | 96-119 | Boss Chamber | Boss lock, Guardian ("The Guardian"), enclosed arena |
+
+### Level 2: "catacombs" — The Catacombs (120×11, 5 zones)
+| Zone | Cols | Theme | Contents |
+|------|------|-------|----------|
+| 1 | 0-23 | Entry | P spawn, crawlers, knights, bats, save point, candle |
+| 2 | 24-47 | Spike Gauntlet | Spikes, skeletons, shooters, platforms |
+| 3 | 48-71 | Ghost Corridor | Ghosts, shielders, H-platform, candles |
+| 4 | 72-95 | Falling Depths | Falling platforms, droppers, chargers, dense enemies |
+| 5 | 96-119 | Boss Arena | Boss lock, Guardian reuse ("The Warden"), enclosed arena |
+
+### Level Progression
+- main → catacombs → title screen (demo complete)
+- No ability orbs in catacombs (player has double jump + dash from level 1)
 
 ## Visual System
 - **SpriteFactory** (`Scripts/SpriteFactory.cs`): Static utility generating all pixel art as `ImageTexture` from `byte[,]` arrays + color palettes
@@ -74,6 +89,7 @@ Single "main" room, 120×11 tiles, 5 zones (24 cols each):
 
 ## File Structure
 ```
+Levels/           JSON level files (main.json, etc.) — layout + metadata
 Scenes/Player/    Player.tscn + Player.cs (CharacterBody2D, AnimatedSprite2D, state machine, combat)
 Scenes/World/     World.tscn + World.cs (single-room level, TileMap, entity spawning, parallax)
 Scenes/Objects/   AbilityOrb, SavePoint, Spikes, MovingPlatform, Candle (.tscn + .cs each)
@@ -81,11 +97,29 @@ Scenes/Enemies/   EnemyBase.cs, Crawler, Flyer, Shooter, Charger, Shielder, Drop
 Scenes/UI/        Hud.tscn + Hud.cs (CanvasLayer, health pips, boss bar, pause menu)
 Scenes/UI/        TitleScreen.tscn + TitleScreen.cs (main menu, slot select, settings)
 Scripts/          GameState.cs, SaveManager.cs, EffectsManager.cs, AudioManager.cs (autoloads)
-Scripts/          SpriteFactory.cs (procedural pixel art), TileMapBuilder.cs, RoomData.cs, TitleScreen.cs
+Scripts/          EntityRegistry.cs (tile char → spawn mapping), SpriteFactory.cs, TileMapBuilder.cs, RoomData.cs (JSON loader)
 Scripts/Components/ HealthComponent.cs, Hitbox.cs, Hurtbox.cs
 ```
 
-## Tile Codes (RoomData.cs)
+## Level JSON Format (`Levels/*.json`)
+```json
+{
+  "id": "main",
+  "name": "The Depths",
+  "music": "depths",
+  "layout": ["#...", "..P.", "####"]
+}
+```
+- One file per level, any dimensions (width × height inferred from layout array)
+- `music` field selects which track to play
+- RoomData.cs loads via `RoomData.GetLevel(levelId)` (cached per level ID)
+- Level order defined in `World.cs` `NextLevel` dictionary
+
+## Adding New Content
+- **New level**: Create `Levels/mynewlevel.json` with layout + metadata
+- **New entity**: Add 1 line to `EntityRegistry.Entries` + create scene file, place char in any level JSON
+
+## Tile Codes (EntityRegistry.cs)
 - `#` solid, `=` one-way, `.` background, `P` player spawn, `G` goal
 - `O` double jump orb, `D` dash orb, `S` save point, `M` max health upgrade
 - `c` crawler, `f` flyer, `s` shooter, `r` charger, `h` shielder, `d` dropper
@@ -142,3 +176,7 @@ Scripts/Components/ HealthComponent.cs, Hitbox.cs, Hurtbox.cs
 - [x] Breakable candles (drop weapon upgrade pickups)
 - [x] Weapon power-up system (5 tiers, resets on death, HUD display)
 - [x] BoneProjectile (arc + gravity + spin)
+- [x] Level system refactor: JSON level files + EntityRegistry (data-driven spawning)
+- [x] Level 2 "catacombs" (The Catacombs, enclosed underground, 120x11, D minor 100 BPM music)
+- [x] Level transitions (auto-walk → fade → next level, or return to title)
+- [x] Multi-level state tracking (CurrentLevelId, DefeatedBosses, save/load persistence)

@@ -40,7 +40,7 @@ public static class TileMapBuilder
 		tileSet.SetPhysicsLayerCollisionMask(0, 0);
 
 		// Use SpriteFactory to generate the expanded atlas
-		var image = SpriteFactory.CreateTileAtlas();
+		var image = AssetLoader.CreateTileAtlas();
 		var texture = ImageTexture.CreateFromImage(image);
 
 		var source = new TileSetAtlasSource();

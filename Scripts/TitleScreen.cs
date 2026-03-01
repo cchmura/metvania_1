@@ -95,7 +95,7 @@ public partial class TitleScreen : Node2D
 		AddChild(bg);
 
 		var stars = new Sprite2D();
-		stars.Texture = SpriteFactory.ParallaxFarLayer(320, 180);
+		stars.Texture = AssetLoader.ParallaxFarLayer(320, 180);
 		stars.Centered = false;
 		AddChild(stars);
 	}

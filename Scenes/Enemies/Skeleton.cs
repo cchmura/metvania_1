@@ -19,7 +19,7 @@ public partial class Skeleton : EnemyBase
 
 	protected override void EnemyInit()
 	{
-		Sprite.Texture = SpriteFactory.SkeletonSprite();
+		Sprite.Texture = AssetLoader.SkeletonSprite();
 		_fireTimer = FireInterval;
 
 		// Wall detector

@@ -41,7 +41,7 @@ public partial class Guardian : EnemyBase
 
 	protected override void EnemyInit()
 	{
-		Sprite.Texture = SpriteFactory.GuardianSprite();
+		Sprite.Texture = AssetLoader.GuardianSprite();
 		ContactHitbox.Damage = 2;
 		_projectileScene = GD.Load<PackedScene>("res://Scenes/Enemies/Projectile.tscn");
 

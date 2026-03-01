@@ -14,7 +14,7 @@ public partial class AudioManager : Node
 	private readonly Dictionary<string, AudioStreamWav> _sounds = new();
 
 	// Music
-	private readonly Dictionary<string, AudioStreamWav> _tracks = new();
+	private readonly Dictionary<string, AudioStream> _tracks = new();
 	private AudioStreamPlayer _musicPlayerA;
 	private AudioStreamPlayer _musicPlayerB;
 	private bool _musicUseA = true;
@@ -141,10 +141,27 @@ public partial class AudioManager : Node
 
 	// ─── Music Playback ─────────────────────────────────────────────
 
+	private const string MusicAssetRoot = "res://Assets/Music/";
+	private static readonly string[] MusicExtensions = { ".ogg", ".mp3", ".wav" };
+
+	private AudioStream LoadMusicAsset(string trackName)
+	{
+		foreach (var ext in MusicExtensions)
+		{
+			string path = MusicAssetRoot + trackName + ext;
+			if (ResourceLoader.Exists(path))
+				return GD.Load<AudioStream>(path);
+		}
+		return null;
+	}
+
 	public void PlayMusic(string trackName)
 	{
 		if (trackName == _currentTrack) return;
-		if (!_tracks.TryGetValue(trackName, out var track)) return;
+
+		// Try loading a custom asset first, fall back to procedural track
+		AudioStream stream = LoadMusicAsset(trackName);
+		if (stream == null && !_tracks.TryGetValue(trackName, out stream)) return;
 
 		_currentTrack = trackName;
 		_musicFadeTween?.Kill();
@@ -155,7 +172,7 @@ public partial class AudioManager : Node
 		var outgoing = _musicUseA ? _musicPlayerB : _musicPlayerA;
 
 		// Fade in incoming
-		incoming.Stream = track;
+		incoming.Stream = stream;
 		incoming.VolumeDb = -40f;
 		incoming.Play();
 		_musicFadeTween.TweenProperty(incoming, "volume_db", 0f, 1.0f);
@@ -578,6 +595,45 @@ public partial class AudioManager : Node
 				                1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 1, 1 },
 				Wave = WaveForm.Noise, Volume = 0.15f,
 				Attack = 0.001f, Decay = 0.03f, Sustain = 0.0f, Release = 0.0f,
+			},
+		});
+
+		// D minor: D2=38, F2=41, G2=43, A2=45, Bb2=46
+		// D3=50, F3=53, G3=55, A3=57, Bb3=58
+		// D4=62, F4=65, G4=67, A4=69, Bb4=70, C5=72, D5=74
+		_tracks["catacombs"] = RenderTrack(100, new TrackVoice[]
+		{
+			// Square bass — pulsing D minor root, darker feel
+			new()
+			{
+				Notes = new[] { 38, 0, 38, 0, 38, 38, 0, 0, 41, 0, 41, 0, 43, 43, 0, 0,
+				                38, 0, 38, 0, 38, 38, 0, 0, 46, 0, 45, 0, 43, 0, 38, 0 },
+				Wave = WaveForm.Square, Volume = 0.28f,
+				Attack = 0.01f, Decay = 0.08f, Sustain = 0.7f, Release = 0.08f,
+			},
+			// Triangle melody — eerie, sparse
+			new()
+			{
+				Notes = new[] { 0, 0, 62, 0, 0, 65, 0, 0, 67, 0, 65, 0, 62, 0, 0, 0,
+				                0, 0, 0, 69, 0, 0, 67, 0, 65, 0, 62, 0, 0, 0, 0, 0 },
+				Wave = WaveForm.Triangle, Volume = 0.16f,
+				Attack = 0.03f, Decay = 0.1f, Sustain = 0.4f, Release = 0.15f,
+			},
+			// Sine pad — sustained minor chord
+			new()
+			{
+				Notes = new[] { 50, 50, 50, 50, 50, 50, 50, 50, 53, 53, 53, 53, 55, 55, 55, 55,
+				                50, 50, 50, 50, 50, 50, 50, 50, 58, 58, 58, 58, 50, 50, 50, 50 },
+				Wave = WaveForm.Sine, Volume = 0.10f,
+				Attack = 0.3f, Decay = 0.1f, Sustain = 1.0f, Release = 0.3f,
+			},
+			// Noise percussion — subtle rhythm
+			new()
+			{
+				Notes = new[] { 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0,
+				                0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0 },
+				Wave = WaveForm.Noise, Volume = 0.08f,
+				Attack = 0.001f, Decay = 0.02f, Sustain = 0.0f, Release = 0.0f,
 			},
 		});
 

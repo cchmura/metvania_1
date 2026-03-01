@@ -11,7 +11,7 @@ public partial class SavePoint : Area2D
 	public override void _Ready()
 	{
 		var sprite = GetNode<Sprite2D>("Sprite");
-		sprite.Texture = SpriteFactory.SavePointSprite();
+		sprite.Texture = AssetLoader.SavePointSprite();
 
 		_gameState = GetNode<GameState>("/root/GameState");
 		_saveManager = GetNode<SaveManager>("/root/SaveManager");

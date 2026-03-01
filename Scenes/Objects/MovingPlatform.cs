@@ -44,7 +44,7 @@ public partial class MovingPlatform : AnimatableBody2D
 		_startPosition = GlobalPosition;
 		_collision = GetNode<CollisionShape2D>("CollisionShape2D");
 		_sprite = GetNode<Sprite2D>("Sprite");
-		_sprite.Texture = SpriteFactory.PlatformSprite();
+		_sprite.Texture = AssetLoader.PlatformSprite();
 
 		if (Mode == PlatformMode.Falling)
 		{

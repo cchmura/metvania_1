@@ -18,7 +18,7 @@ public partial class Dropper : EnemyBase
 
 	protected override void EnemyInit()
 	{
-		Sprite.Texture = SpriteFactory.DropperSprite();
+		Sprite.Texture = AssetLoader.DropperSprite();
 		_homePosition = GlobalPosition;
 		// Hanging: no body collision so player walks through
 		CollisionMask = 0;

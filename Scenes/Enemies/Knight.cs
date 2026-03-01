@@ -23,7 +23,7 @@ public partial class Knight : EnemyBase
 
 	protected override void EnemyInit()
 	{
-		Sprite.Texture = SpriteFactory.KnightSprite();
+		Sprite.Texture = AssetLoader.KnightSprite();
 
 		// Wall detector
 		_wallDetector = new RayCast2D();

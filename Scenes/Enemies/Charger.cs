@@ -27,7 +27,7 @@ public partial class Charger : EnemyBase
 
 	protected override void EnemyInit()
 	{
-		Sprite.Texture = SpriteFactory.ChargerSprite();
+		Sprite.Texture = AssetLoader.ChargerSprite();
 
 		_wallDetector = new RayCast2D();
 		_wallDetector.TargetPosition = new Vector2(10, 0);

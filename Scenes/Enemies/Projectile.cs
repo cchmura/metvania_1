@@ -19,7 +19,7 @@ public partial class Projectile : Area2D
 	public override void _Ready()
 	{
 		var sprite = GetNode<Sprite2D>("Sprite");
-		sprite.Texture = SpriteFactory.ProjectileSprite();
+		sprite.Texture = AssetLoader.ProjectileSprite();
 
 		CollisionLayer = 0;
 		CollisionMask = 1; // Detect world geometry

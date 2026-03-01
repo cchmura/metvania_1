@@ -15,7 +15,7 @@ public partial class Bat : EnemyBase
 
 	protected override void EnemyInit()
 	{
-		Sprite.Texture = SpriteFactory.BatSprite();
+		Sprite.Texture = AssetLoader.BatSprite();
 		_startPosition = GlobalPosition;
 
 		// Determine initial direction toward player

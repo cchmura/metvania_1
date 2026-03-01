@@ -8,6 +8,7 @@ public partial class World : Node2D
 	private struct EnemySpawn
 	{
 		public string Type;
+		public string ScenePath;
 		public Vector2 Position;
 	}
 
@@ -41,6 +42,17 @@ public partial class World : Node2D
 	private Guardian _boss;
 	private Area2D _bossLockTrigger;
 
+	// Level transitions
+	private static readonly Dictionary<string, string> NextLevel = new()
+	{
+		["main"] = "catacombs",
+		["catacombs"] = null,
+	};
+	private ColorRect _fadeOverlay;
+	private bool _transitioning;
+	private Area2D _goalArea;
+	private bool _playerInGoal;
+
 	public override void _Ready()
 	{
 		_gameState = GetNode<GameState>("/root/GameState");
@@ -54,7 +66,7 @@ public partial class World : Node2D
 		AddChild(_tileMap);
 
 		// Paint the level
-		LoadRoom("main");
+		LoadRoom(_gameState.CurrentLevelId);
 
 		// Spawn player
 		SpawnPlayer();
@@ -83,8 +95,8 @@ public partial class World : Node2D
 		}
 
 		// Room name
-		_gameState.CurrentRoom = "The Depths";
-		_hud?.SetRoomName("The Depths");
+		_gameState.CurrentRoom = _currentRoom.DisplayName;
+		_hud?.SetRoomName(_currentRoom.DisplayName);
 
 		// Pass camera to EffectsManager
 		_effectsManager = GetNodeOrNull<EffectsManager>("/root/EffectsManager");
@@ -97,18 +109,40 @@ public partial class World : Node2D
 		_bossDefeated = _gameState.BossDefeated;
 		SetupBossArena();
 
+		// Fade overlay (CanvasLayer so it's always on top)
+		var fadeCanvas = new CanvasLayer();
+		fadeCanvas.Layer = 20;
+		AddChild(fadeCanvas);
+		_fadeOverlay = new ColorRect();
+		_fadeOverlay.Color = new Color(0, 0, 0, 1);
+		_fadeOverlay.AnchorRight = 1;
+		_fadeOverlay.AnchorBottom = 1;
+		_fadeOverlay.MouseFilter = Control.MouseFilterEnum.Ignore;
+		fadeCanvas.AddChild(_fadeOverlay);
+
+		// Fade in from black on level start
+		var fadeIn = CreateTween();
+		fadeIn.TweenProperty(_fadeOverlay, "color:a", 0f, 0.5f);
+
 		// Start music
-		_audioManager?.PlayMusic("depths");
+		_audioManager?.PlayMusic(_currentRoom.Music);
 	}
 
 	public override void _Process(double delta)
 	{
-		if (_player == null || _respawning) return;
+		if (_player == null || _respawning || _transitioning) return;
 
 		// Pit death: fell below the level
 		if (_player.GlobalPosition.Y > _levelBounds.Position.Y + _levelBounds.Size.Y + 32)
 		{
 			OnPlayerDied();
+			return;
+		}
+
+		// Goal interaction check
+		if (_playerInGoal && Input.IsActionJustPressed("interact"))
+		{
+			StartLevelTransition();
 			return;
 		}
 
@@ -121,9 +155,12 @@ public partial class World : Node2D
 
 	// ─── Level Loading ──────────────────────────────────────────────
 
+	private RoomData.RoomDef _currentRoom;
+
 	private void LoadRoom(string roomId)
 	{
-		var layout = RoomData.Level;
+		_currentRoom = RoomData.GetLevel(roomId);
+		var layout = _currentRoom.Layout;
 		int cols = layout[0].Length;
 		int rows = layout.Length;
 
@@ -162,7 +199,7 @@ public partial class World : Node2D
 		farLayer.MotionScale = new Vector2(0.1f, 0.1f);
 		farLayer.MotionMirroring = new Vector2(320, 0);
 		var farSprite = new Sprite2D();
-		farSprite.Texture = SpriteFactory.ParallaxFarLayer(320, 180);
+		farSprite.Texture = AssetLoader.ParallaxFarLayer(320, 180);
 		farSprite.Centered = false;
 		farLayer.AddChild(farSprite);
 		parallax.AddChild(farLayer);
@@ -172,7 +209,7 @@ public partial class World : Node2D
 		midLayer.MotionScale = new Vector2(0.3f, 0.3f);
 		midLayer.MotionMirroring = new Vector2(320, 0);
 		var midSprite = new Sprite2D();
-		midSprite.Texture = SpriteFactory.ParallaxMidLayer(320, 180);
+		midSprite.Texture = AssetLoader.ParallaxMidLayer(320, 180);
 		midSprite.Centered = false;
 		midLayer.AddChild(midSprite);
 		parallax.AddChild(midLayer);
@@ -182,7 +219,7 @@ public partial class World : Node2D
 		nearLayer.MotionScale = new Vector2(0.6f, 0.6f);
 		nearLayer.MotionMirroring = new Vector2(320, 0);
 		var nearSprite = new Sprite2D();
-		nearSprite.Texture = SpriteFactory.ParallaxNearLayer(320, 180);
+		nearSprite.Texture = AssetLoader.ParallaxNearLayer(320, 180);
 		nearSprite.Centered = false;
 		nearLayer.AddChild(nearSprite);
 		parallax.AddChild(nearLayer);
@@ -202,113 +239,89 @@ public partial class World : Node2D
 					col * TileMapBuilder.TileSize + TileMapBuilder.TileSize / 2f,
 					row * TileMapBuilder.TileSize + TileMapBuilder.TileSize / 2f);
 
-				switch (c)
+				if (!EntityRegistry.Entries.TryGetValue(c, out var def))
 				{
-					case '#':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.SolidTile);
+					_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
+					continue;
+				}
+
+				// Paint tile
+				_tileMap.SetCell(tileCoord, 0, def.TileCoord);
+
+				switch (def.Mode)
+				{
+					case SpawnMode.Tile:
 						break;
-					case '=':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.OneWayTile);
+
+					case SpawnMode.Marker:
+						HandleMarker(def.MarkerName, worldPos);
 						break;
-					case 'P':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_levelSpawnPosition = worldPos;
-						if (!_saveManager.HasSaveFile())
-							_gameState.PlayerSpawnPosition = worldPos;
+
+					case SpawnMode.Scene:
+						SpawnSceneEntity(def, worldPos);
 						break;
-					case 'O':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						SpawnAbilityOrb(worldPos);
+
+					case SpawnMode.Enemy:
+						_enemySpawns.Add(new EnemySpawn
+						{
+							Type = def.EnemyType,
+							ScenePath = def.ScenePath,
+							Position = worldPos,
+						});
 						break;
-					case 'S':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						SpawnSavePoint(worldPos);
-						break;
-					case 'G':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						SpawnGoalMarker(worldPos);
-						break;
-					case 'c':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_enemySpawns.Add(new EnemySpawn { Type = "crawler", Position = worldPos });
-						break;
-					case 'f':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_enemySpawns.Add(new EnemySpawn { Type = "flyer", Position = worldPos });
-						break;
-					case 'x':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						SpawnSpikes(worldPos);
-						break;
-					case 'D':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						SpawnDashOrb(worldPos);
-						break;
-					case 'H':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						SpawnMovingPlatform(worldPos, PlatformMode.Horizontal);
-						break;
-					case 'V':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						SpawnMovingPlatform(worldPos, PlatformMode.Vertical);
-						break;
-					case 'F':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						SpawnMovingPlatform(worldPos, PlatformMode.Falling);
-						break;
-					case 's':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_enemySpawns.Add(new EnemySpawn { Type = "shooter", Position = worldPos });
-						break;
-					case 'r':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_enemySpawns.Add(new EnemySpawn { Type = "charger", Position = worldPos });
-						break;
-					case 'h':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_enemySpawns.Add(new EnemySpawn { Type = "shielder", Position = worldPos });
-						break;
-					case 'd':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_enemySpawns.Add(new EnemySpawn { Type = "dropper", Position = worldPos });
-						break;
-					case 'L':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_bossLockPosition = worldPos;
-						break;
-					case 'B':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_bossSpawnPosition = worldPos;
-						break;
-					case 'M':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						SpawnMaxHealthUpgrade(worldPos);
-						break;
-					case 'b':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_enemySpawns.Add(new EnemySpawn { Type = "bat", Position = worldPos });
-						break;
-					case 'k':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_enemySpawns.Add(new EnemySpawn { Type = "skeleton", Position = worldPos });
-						break;
-					case 'g':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_enemySpawns.Add(new EnemySpawn { Type = "ghost", Position = worldPos });
-						break;
-					case 'n':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						_enemySpawns.Add(new EnemySpawn { Type = "knight", Position = worldPos });
-						break;
-					case 'C':
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
-						SpawnCandle(worldPos);
-						break;
-					default:
-						_tileMap.SetCell(tileCoord, 0, TileMapBuilder.BackgroundTile);
+
+					case SpawnMode.Custom:
+						HandleCustomSpawn(c, worldPos);
 						break;
 				}
 			}
+		}
+	}
+
+	private void HandleMarker(string markerName, Vector2 worldPos)
+	{
+		switch (markerName)
+		{
+			case "player_spawn":
+				_levelSpawnPosition = worldPos;
+				if (!_saveManager.HasSaveFile())
+					_gameState.PlayerSpawnPosition = worldPos;
+				break;
+			case "boss_lock":
+				_bossLockPosition = worldPos;
+				break;
+			case "boss_spawn":
+				_bossSpawnPosition = worldPos;
+				break;
+		}
+	}
+
+	private void SpawnSceneEntity(EntityDef def, Vector2 worldPos)
+	{
+		var scene = GD.Load<PackedScene>(def.ScenePath);
+		var node = scene.Instantiate<Node2D>();
+		node.GlobalPosition = worldPos;
+
+		if (def.Properties != null)
+		{
+			foreach (var (key, value) in def.Properties)
+				node.Set(key, value);
+		}
+
+		AddChild(node);
+		_activeObjects.Add(node);
+	}
+
+	private void HandleCustomSpawn(char c, Vector2 worldPos)
+	{
+		switch (c)
+		{
+			case 'M':
+				SpawnMaxHealthUpgrade(worldPos);
+				break;
+			case 'G':
+				SpawnGoalMarker(worldPos);
+				break;
 		}
 	}
 
@@ -340,21 +353,9 @@ public partial class World : Node2D
 
 	private void SpawnEnemy(EnemySpawn spawn)
 	{
-		PackedScene scene = spawn.Type switch
-		{
-			"crawler" => GD.Load<PackedScene>("res://Scenes/Enemies/Crawler.tscn"),
-			"flyer" => GD.Load<PackedScene>("res://Scenes/Enemies/Flyer.tscn"),
-			"shooter" => GD.Load<PackedScene>("res://Scenes/Enemies/Shooter.tscn"),
-			"charger" => GD.Load<PackedScene>("res://Scenes/Enemies/Charger.tscn"),
-			"shielder" => GD.Load<PackedScene>("res://Scenes/Enemies/Shielder.tscn"),
-			"dropper" => GD.Load<PackedScene>("res://Scenes/Enemies/Dropper.tscn"),
-			"bat" => GD.Load<PackedScene>("res://Scenes/Enemies/Bat.tscn"),
-			"skeleton" => GD.Load<PackedScene>("res://Scenes/Enemies/Skeleton.tscn"),
-			"ghost" => GD.Load<PackedScene>("res://Scenes/Enemies/Ghost.tscn"),
-			"knight" => GD.Load<PackedScene>("res://Scenes/Enemies/Knight.tscn"),
-			_ => null,
-		};
+		if (string.IsNullOrEmpty(spawn.ScenePath)) return;
 
+		var scene = GD.Load<PackedScene>(spawn.ScenePath);
 		if (scene == null) return;
 
 		var enemy = scene.Instantiate<Node2D>();
@@ -453,7 +454,8 @@ public partial class World : Node2D
 		_boss.BossDefeated += OnBossDefeated;
 
 		var bossHealth = _boss.GetNode<HealthComponent>("HealthComponent");
-		_hud?.ShowBossHealthBar("The Guardian", bossHealth.CurrentHealth, bossHealth.MaxHealth);
+		string bossName = _gameState.CurrentLevelId == "catacombs" ? "The Warden" : "The Guardian";
+		_hud?.ShowBossHealthBar(bossName, bossHealth.CurrentHealth, bossHealth.MaxHealth);
 		_effectsManager?.Shake(4f, 0.3f);
 		_audioManager?.PlayMusic("boss");
 	}
@@ -473,7 +475,7 @@ public partial class World : Node2D
 		UnsealBossArena();
 		SpawnGoalMarker(_bossSpawnPosition);
 		_effectsManager?.Shake(6f, 0.4f);
-		_audioManager?.PlayMusic("depths");
+		_audioManager?.PlayMusic(_currentRoom?.Music ?? "depths");
 	}
 
 	private void UnsealBossArena()
@@ -485,67 +487,6 @@ public partial class World : Node2D
 	}
 
 	// ─── Object Spawners ────────────────────────────────────────────
-
-	private void SpawnAbilityOrb(Vector2 position)
-	{
-		var orbScene = GD.Load<PackedScene>("res://Scenes/Objects/AbilityOrb.tscn");
-		var orb = orbScene.Instantiate<AbilityOrb>();
-		orb.GlobalPosition = position;
-		AddChild(orb);
-		_activeObjects.Add(orb);
-	}
-
-	private void SpawnSavePoint(Vector2 position)
-	{
-		var saveScene = GD.Load<PackedScene>("res://Scenes/Objects/SavePoint.tscn");
-		var savePoint = saveScene.Instantiate<SavePoint>();
-		savePoint.GlobalPosition = position;
-		AddChild(savePoint);
-		_activeObjects.Add(savePoint);
-	}
-
-	private void SpawnMovingPlatform(Vector2 position, PlatformMode mode)
-	{
-		var platScene = GD.Load<PackedScene>("res://Scenes/Objects/MovingPlatform.tscn");
-		var platform = platScene.Instantiate<MovingPlatform>();
-		platform.Mode = mode;
-
-		switch (mode)
-		{
-			case PlatformMode.Horizontal:
-				platform.MoveDistance = 64f;
-				platform.MoveSpeed = 40f;
-				break;
-			case PlatformMode.Vertical:
-				platform.MoveDistance = 48f;
-				platform.MoveSpeed = 30f;
-				break;
-		}
-
-		platform.GlobalPosition = position;
-		AddChild(platform);
-		_activeObjects.Add(platform);
-	}
-
-	private void SpawnDashOrb(Vector2 position)
-	{
-		var orbScene = GD.Load<PackedScene>("res://Scenes/Objects/AbilityOrb.tscn");
-		var orb = orbScene.Instantiate<AbilityOrb>();
-		orb.OrbId = "DashOrb";
-		orb.AbilityName = "Dash";
-		orb.GlobalPosition = position;
-		AddChild(orb);
-		_activeObjects.Add(orb);
-	}
-
-	private void SpawnSpikes(Vector2 position)
-	{
-		var spikeScene = GD.Load<PackedScene>("res://Scenes/Objects/Spikes.tscn");
-		var spikes = spikeScene.Instantiate<Node2D>();
-		spikes.GlobalPosition = position;
-		AddChild(spikes);
-		_activeObjects.Add(spikes);
-	}
 
 	private void SpawnMaxHealthUpgrade(Vector2 position)
 	{
@@ -564,7 +505,7 @@ public partial class World : Node2D
 		pickup.AddChild(shape);
 
 		var sprite = new Sprite2D();
-		sprite.Texture = SpriteFactory.MaxHealthUpgradeSprite();
+		sprite.Texture = AssetLoader.MaxHealthUpgradeSprite();
 		pickup.AddChild(sprite);
 
 		pickup.BodyEntered += (body) =>
@@ -594,15 +535,6 @@ public partial class World : Node2D
 		_activeObjects.Add(pickup);
 	}
 
-	private void SpawnCandle(Vector2 position)
-	{
-		var candleScene = GD.Load<PackedScene>("res://Scenes/Objects/Candle.tscn");
-		var candle = candleScene.Instantiate<Node2D>();
-		candle.GlobalPosition = position;
-		AddChild(candle);
-		_activeObjects.Add(candle);
-	}
-
 	private void SpawnGoalMarker(Vector2 position)
 	{
 		var marker = new ColorRect();
@@ -615,38 +547,86 @@ public partial class World : Node2D
 
 		var label = new Label();
 		label.Position = position - new Vector2(30, 48);
-		label.Text = "GOAL";
-		label.AddThemeColorOverride("font_color", new Color(1f, 1f, 1f));
 		label.ZIndex = 5;
 		AddChild(label);
 		_activeObjects.Add(label);
 
-		var goalArea = new Area2D();
-		goalArea.Position = position;
-		goalArea.CollisionLayer = 128;
-		goalArea.CollisionMask = 2;
+		string levelId = _gameState.CurrentLevelId;
+		bool hasNextLevel = NextLevel.TryGetValue(levelId, out var next) && next != null;
+		label.Text = hasNextLevel ? "CONTINUE" : "GOAL";
+
+		_goalArea = new Area2D();
+		_goalArea.Position = position;
+		_goalArea.CollisionLayer = 128;
+		_goalArea.CollisionMask = 2;
 
 		var goalShape = new CollisionShape2D();
 		var rect = new RectangleShape2D();
 		rect.Size = new Vector2(32, 32);
 		goalShape.Shape = rect;
 		goalShape.Position = new Vector2(0, -16);
-		goalArea.AddChild(goalShape);
+		_goalArea.AddChild(goalShape);
 
-		goalArea.BodyEntered += (body) =>
+		_goalArea.BodyEntered += (body) =>
 		{
 			if (body is Player)
 			{
-				_hud?.ShowPrompt("You reached the goal! Demo complete!");
+				_playerInGoal = true;
+				_hud?.ShowPrompt("Press [E] to continue");
 			}
 		};
-		goalArea.BodyExited += (body) =>
+		_goalArea.BodyExited += (body) =>
 		{
 			if (body is Player)
+			{
+				_playerInGoal = false;
 				_hud?.HidePrompt();
+			}
 		};
 
-		AddChild(goalArea);
-		_activeObjects.Add(goalArea);
+		AddChild(_goalArea);
+		_activeObjects.Add(_goalArea);
+	}
+
+	private void StartLevelTransition()
+	{
+		if (_transitioning) return;
+		_transitioning = true;
+		_playerInGoal = false;
+		_hud?.HidePrompt();
+
+		string levelId = _gameState.CurrentLevelId;
+		bool hasNextLevel = NextLevel.TryGetValue(levelId, out var nextLevelId) && nextLevelId != null;
+
+		// Disable player collision with world so they walk through arena walls
+		_player.CollisionMask &= ~1u;
+		_player.StartAutoWalk(1);
+
+		var tween = CreateTween();
+		// Auto-walk for 0.8s
+		tween.TweenInterval(0.8f);
+		// Fade to black
+		tween.TweenProperty(_fadeOverlay, "color:a", 1f, 0.5f);
+		tween.TweenCallback(Callable.From(() =>
+		{
+			_player.StopAutoWalk();
+			_audioManager?.StopMusic(0.3f);
+
+			if (hasNextLevel)
+			{
+				// Transition to next level
+				_gameState.CurrentLevelId = nextLevelId;
+				// Set spawn to default; the new level's P marker will set it
+				_gameState.PlayerSpawnPosition = new Vector2(40, 136);
+				_saveManager.Save();
+				GetTree().ChangeSceneToFile("res://Scenes/World/World.tscn");
+			}
+			else
+			{
+				// No more levels — return to title
+				_saveManager.Save();
+				GetTree().ChangeSceneToFile("res://Scenes/UI/TitleScreen.tscn");
+			}
+		}));
 	}
 }

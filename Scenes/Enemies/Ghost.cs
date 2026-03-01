@@ -15,7 +15,7 @@ public partial class Ghost : EnemyBase
 
 	protected override void EnemyInit()
 	{
-		Sprite.Texture = SpriteFactory.GhostSprite();
+		Sprite.Texture = AssetLoader.GhostSprite();
 		_homePosition = GlobalPosition;
 
 		// Semi-transparent
