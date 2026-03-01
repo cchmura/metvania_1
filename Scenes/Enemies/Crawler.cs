@@ -17,14 +17,14 @@ public partial class Crawler : EnemyBase
 
 		// Wall detector — horizontal ray in movement direction
 		_wallDetector = new RayCast2D();
-		_wallDetector.TargetPosition = new Vector2(10, 0);
+		_wallDetector.TargetPosition = new Vector2(16, 0);
 		_wallDetector.CollisionMask = 1; // World geometry
 		_wallDetector.Enabled = true;
 		AddChild(_wallDetector);
 
 		// Edge detector — downward ray ahead of movement to detect floor edge
 		_edgeDetector = new RayCast2D();
-		_edgeDetector.Position = new Vector2(8, 0);
+		_edgeDetector.Position = new Vector2(14, 0);
 		_edgeDetector.TargetPosition = new Vector2(0, 16);
 		_edgeDetector.CollisionMask = 1;
 		_edgeDetector.Enabled = true;
@@ -49,8 +49,8 @@ public partial class Crawler : EnemyBase
 		}
 
 		// Update ray directions for current facing
-		_wallDetector.TargetPosition = new Vector2(10 * _direction, 0);
-		_edgeDetector.Position = new Vector2(8 * _direction, 0);
+		_wallDetector.TargetPosition = new Vector2(16 * _direction, 0);
+		_edgeDetector.Position = new Vector2(14 * _direction, 0);
 
 		// Check for wall or edge — reverse direction
 		if (IsOnFloor())
@@ -58,8 +58,8 @@ public partial class Crawler : EnemyBase
 			if (_wallDetector.IsColliding() || !_edgeDetector.IsColliding())
 			{
 				_direction *= -1;
-				_wallDetector.TargetPosition = new Vector2(10 * _direction, 0);
-				_edgeDetector.Position = new Vector2(8 * _direction, 0);
+				_wallDetector.TargetPosition = new Vector2(16 * _direction, 0);
+				_edgeDetector.Position = new Vector2(14 * _direction, 0);
 			}
 		}
 

@@ -21,6 +21,16 @@ public static class SpriteFactory
 		return ImageTexture.CreateFromImage(img);
 	}
 
+	private static byte[,] Upscale(byte[,] pixels, int scale)
+	{
+		int h = pixels.GetLength(0), w = pixels.GetLength(1);
+		var result = new byte[h * scale, w * scale];
+		for (int y = 0; y < h * scale; y++)
+			for (int x = 0; x < w * scale; x++)
+				result[y, x] = pixels[y / scale, x / scale];
+		return result;
+	}
+
 	// ─── Player Sprites (16x32) ─────────────────────────────────────
 
 	private static readonly Color[] PlayerPalette = new[]
@@ -528,7 +538,7 @@ public static class SpriteFactory
 			{0,0,4,4,1,4,4,1,4,4,0,0},
 			{0,4,4,0,4,0,0,4,0,4,4,0},
 		};
-		return CreateTexture(px, CrawlerPalette);
+		return CreateTexture(Upscale(px, 2), CrawlerPalette);
 	}
 
 	// Flyer: 12x12, purple bat-like
@@ -559,7 +569,7 @@ public static class SpriteFactory
 			{0,0,0,0,0,4,4,0,0,0,0,0},
 			{0,0,0,0,0,0,0,0,0,0,0,0},
 		};
-		return CreateTexture(px, FlyerPalette);
+		return CreateTexture(Upscale(px, 2), FlyerPalette);
 	}
 
 	// Shooter: 12x12, orange turret
@@ -590,7 +600,7 @@ public static class SpriteFactory
 			{0,0,4,1,1,3,3,1,1,4,0,0},
 			{0,0,4,4,4,4,4,4,4,4,0,0},
 		};
-		return CreateTexture(px, ShooterPalette);
+		return CreateTexture(Upscale(px, 2), ShooterPalette);
 	}
 
 	// Charger: 12x12, red bull-like
@@ -621,7 +631,7 @@ public static class SpriteFactory
 			{0,0,4,1,4,1,1,4,1,4,0,0},
 			{0,4,4,0,4,4,4,4,0,4,4,0},
 		};
-		return CreateTexture(px, ChargerPalette);
+		return CreateTexture(Upscale(px, 2), ChargerPalette);
 	}
 
 	// Shielder: 12x12, blue with front shield
@@ -653,7 +663,7 @@ public static class SpriteFactory
 			{0,0,4,1,4,1,1,4,1,4,0,0},
 			{0,4,4,0,4,4,4,4,0,4,4,0},
 		};
-		return CreateTexture(px, ShielderPalette);
+		return CreateTexture(Upscale(px, 2), ShielderPalette);
 	}
 
 	// Dropper: 12x12, green blob
@@ -684,7 +694,7 @@ public static class SpriteFactory
 			{0,0,0,4,3,1,1,3,4,0,0,0},
 			{0,0,0,0,4,4,4,4,0,0,0,0},
 		};
-		return CreateTexture(px, DropperPalette);
+		return CreateTexture(Upscale(px, 2), DropperPalette);
 	}
 
 	// Guardian: 24x32, large boss
@@ -737,7 +747,7 @@ public static class SpriteFactory
 			{0,0,4,1,1,1,1,1,1,1,1,4,4,1,1,1,1,1,1,1,1,4,0,0},
 			{0,0,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,0,0},
 		};
-		return CreateTexture(px, GuardianPalette);
+		return CreateTexture(Upscale(px, 2), GuardianPalette);
 	}
 
 	// Projectile: 6x4
@@ -1166,7 +1176,7 @@ public static class SpriteFactory
 			{0,0,0,0,4,0,0,4,0,0,0,0},
 			{0,0,0,0,0,0,0,0,0,0,0,0},
 		};
-		return CreateTexture(px, BatPalette);
+		return CreateTexture(Upscale(px, 2), BatPalette);
 	}
 
 	// ─── Skeleton Sprite: 12×16 ─────────────────────────────────────
@@ -1202,7 +1212,7 @@ public static class SpriteFactory
 			{0,0,4,1,1,0,0,1,1,4,0,0},
 			{0,0,4,4,4,0,0,4,4,4,0,0},
 		};
-		return CreateTexture(px, SkeletonPalette);
+		return CreateTexture(Upscale(px, 2), SkeletonPalette);
 	}
 
 	// ─── Ghost Sprite: 12×14 ────────────────────────────────────────
@@ -1235,7 +1245,7 @@ public static class SpriteFactory
 			{0,0,0,4,0,0,0,0,4,0,0,0},
 			{0,0,0,0,0,0,0,0,0,0,0,0},
 		};
-		return CreateTexture(px, palette);
+		return CreateTexture(Upscale(px, 2), palette);
 	}
 
 	// ─── Knight Sprite: 12×16 ───────────────────────────────────────
@@ -1273,7 +1283,7 @@ public static class SpriteFactory
 			{0,0,4,1,1,0,0,1,1,4,0,0},
 			{0,0,4,4,4,0,0,4,4,4,0,0},
 		};
-		return CreateTexture(px, KnightPalette);
+		return CreateTexture(Upscale(px, 2), KnightPalette);
 	}
 
 	// ─── Bone Projectile Sprite: 8×8 ────────────────────────────────

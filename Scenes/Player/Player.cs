@@ -43,7 +43,7 @@ public partial class Player : CharacterBody2D
 
 	// Combat constants
 	private const float AttackActiveDuration = 0.25f;
-	private const float AttackCooldown = 0.35f;
+	private const float AttackCooldown = 0.15f;
 	private const float PogoImpulse = -260f;
 	private const float KnockbackSpeed = 110f;
 	private const float KnockbackDuration = 0.2f;
@@ -53,9 +53,13 @@ public partial class Player : CharacterBody2D
 	private const float Combo1ActiveDuration = 0.2f;
 	private const float Combo2ActiveDuration = 0.2f;
 	private const float Combo3ActiveDuration = 0.3f;
-	private const float ComboWindowDuration = 0.35f;
-	private const float ComboEndCooldown = 0.4f;
+	private const float ComboWindowDuration = 0.25f;
+	private const float ComboEndCooldown = 0.15f;
 	private const int Combo3Damage = 2;
+
+	// Sprite constants
+	private const int SpriteFrameSize = 96;
+	private const string SpritePath = "res://Assets/Sprites/Human_Soldier_Sword_Shield/No_Shadows/";
 
 	// State
 	private PlayerState _state = PlayerState.Normal;
@@ -114,7 +118,6 @@ public partial class Player : CharacterBody2D
 	private Hitbox _attackHitbox;
 	private Hurtbox _hurtbox;
 	private CollisionShape2D _attackShape;
-	private ColorRect _attackVisual;
 
 	public override void _Ready()
 	{
@@ -130,8 +133,6 @@ public partial class Player : CharacterBody2D
 		// Ensure attack shape has its own RectangleShape2D so resizing
 		// doesn't mutate the player body's shared shape resource.
 		_attackShape.Shape = new RectangleShape2D { Size = new Vector2(26, 16) };
-		_attackVisual = GetNode<ColorRect>("AttackVisual");
-
 		AddToGroup("player");
 
 		// Wall detection raycasts (player body half-width is 8px + 2px margin = 10px reach)
@@ -156,8 +157,6 @@ public partial class Player : CharacterBody2D
 		_hurtbox.Hurt += OnHurt;
 		_attackHitbox.HitLanded += OnAttackHit;
 
-		// Start with attack hidden
-		_attackVisual.Visible = false;
 		_attackHitbox.Deactivate();
 	}
 
@@ -173,7 +172,7 @@ public partial class Player : CharacterBody2D
 				if (!_isAutoWalking)
 				{
 					ProcessAttack(dt);
-					ProcessDashInput();
+					ProcessDashInput(dt);
 				}
 				break;
 			case PlayerState.Dashing:
@@ -405,7 +404,6 @@ public partial class Player : CharacterBody2D
 					{
 						// Enter combo window
 						_attackHitbox.Deactivate();
-						_attackVisual.Visible = false;
 						_state = PlayerState.Normal;
 						_comboWindowTimer = ComboWindowDuration;
 					}
@@ -460,7 +458,7 @@ public partial class Player : CharacterBody2D
 			_audio?.Play("slash");
 			PositionSingleAttack();
 			_attackHitbox.Activate();
-			_attackVisual.Visible = true;
+			_sprite.Play(_attackDir == AttackDirection.Up ? "attack_up" : "attack_down");
 		}
 	}
 
@@ -477,8 +475,6 @@ public partial class Player : CharacterBody2D
 			case 1:
 				shape.Size = new Vector2(26, 16);
 				_attackShape.Position = new Vector2(20 * _facingDirection, -16);
-				_attackVisual.Size = new Vector2(26, 16);
-				_attackVisual.Position = new Vector2(20 * _facingDirection - 13, -28);
 				_attackTimer = Combo1ActiveDuration;
 				_attackHitbox.Damage = 1 + WeaponBonus;
 				_audio?.Play("slash");
@@ -486,8 +482,6 @@ public partial class Player : CharacterBody2D
 			case 2:
 				shape.Size = new Vector2(30, 16);
 				_attackShape.Position = new Vector2(22 * _facingDirection, -16);
-				_attackVisual.Size = new Vector2(30, 16);
-				_attackVisual.Position = new Vector2(22 * _facingDirection - 15, -28);
 				_attackTimer = Combo2ActiveDuration;
 				_attackHitbox.Damage = 1 + WeaponBonus;
 				_audio?.Play("slash");
@@ -495,8 +489,6 @@ public partial class Player : CharacterBody2D
 			case 3:
 				shape.Size = new Vector2(32, 20);
 				_attackShape.Position = new Vector2(24 * _facingDirection, -16);
-				_attackVisual.Size = new Vector2(32, 20);
-				_attackVisual.Position = new Vector2(24 * _facingDirection - 16, -30);
 				_attackTimer = Combo3ActiveDuration;
 				_attackHitbox.Damage = Combo3Damage + WeaponBonus;
 				_audio?.Play("heavy_slash");
@@ -504,7 +496,7 @@ public partial class Player : CharacterBody2D
 		}
 
 		_attackHitbox.Activate();
-		_attackVisual.Visible = true;
+		_sprite.Play("attack_forward");
 	}
 
 	private void PositionSingleAttack()
@@ -515,14 +507,10 @@ public partial class Player : CharacterBody2D
 			case AttackDirection.Up:
 				shape.Size = new Vector2(16, 26);
 				_attackShape.Position = new Vector2(0, -38);
-				_attackVisual.Size = new Vector2(16, 26);
-				_attackVisual.Position = new Vector2(-8, -51);
 				break;
 			case AttackDirection.Down:
 				shape.Size = new Vector2(16, 26);
 				_attackShape.Position = new Vector2(0, 8);
-				_attackVisual.Size = new Vector2(16, 26);
-				_attackVisual.Position = new Vector2(-8, -5);
 				break;
 		}
 	}
@@ -531,7 +519,6 @@ public partial class Player : CharacterBody2D
 	{
 		_state = PlayerState.Normal;
 		_attackHitbox.Deactivate();
-		_attackVisual.Visible = false;
 	}
 
 	private void EndCombo()
@@ -566,18 +553,16 @@ public partial class Player : CharacterBody2D
 	private void OnDamaged(int amount)
 	{
 		if (_state == PlayerState.Dead) return;
-		_state = PlayerState.Damaged;
-		_knockbackTimer = KnockbackDuration;
 
 		// End any active attack/combo
 		_comboStep = 0;
 		_comboWindowTimer = 0;
 		_comboQueued = false;
 		_attackHitbox.Damage = 1 + WeaponBonus;
-		if (_attackVisual.Visible)
-		{
-			EndAttack();
-		}
+		_attackHitbox.Deactivate();
+
+		_state = PlayerState.Damaged;
+		_knockbackTimer = KnockbackDuration;
 
 		_audio?.Play("player_hurt");
 		_effects?.HitFreeze(0.1f);
@@ -616,9 +601,9 @@ public partial class Player : CharacterBody2D
 		}
 	}
 
-	private void ProcessDashInput()
+	private void ProcessDashInput(float dt)
 	{
-		_dashCooldownTimer -= (float)GetPhysicsProcessDeltaTime();
+		_dashCooldownTimer -= dt;
 
 		if (Input.IsActionJustPressed("dash") && _dashCooldownTimer <= 0
 			&& _gameState.HasAbility("Dash") && _state != PlayerState.Dashing)
@@ -633,6 +618,10 @@ public partial class Player : CharacterBody2D
 
 	private void StartDash(bool onFloor)
 	{
+		// End any active attack before changing state
+		if (_state == PlayerState.Attacking)
+			EndAttack();
+
 		_state = PlayerState.Dashing;
 		_dashDirection = _facingDirection;
 		_dashTimer = DashDuration;
@@ -641,15 +630,7 @@ public partial class Player : CharacterBody2D
 		_healthComponent.ForceInvincible(DashDuration);
 
 		if (!onFloor)
-		{
 			_usedAirDash = true;
-		}
-
-		// End any active attack
-		if (_attackVisual.Visible)
-		{
-			EndAttack();
-		}
 
 		_audio?.Play("dash");
 		_effects?.SpawnParticles(GlobalPosition, ParticleType.DashTrail);
@@ -690,6 +671,9 @@ public partial class Player : CharacterBody2D
 		afterimage.Texture = _sprite.SpriteFrames?.GetFrameTexture(_sprite.Animation, _sprite.Frame);
 		afterimage.Position = GlobalPosition + new Vector2(0, -16);
 		afterimage.FlipH = _sprite.FlipH;
+		afterimage.Scale = new Vector2(1.6f, 1.6f);
+		afterimage.Offset = new Vector2(0, 1);
+		afterimage.TextureFilter = TextureFilterEnum.Nearest;
 		afterimage.Modulate = new Color(0.4f, 0.7f, 1f, 0.5f);
 		afterimage.ZIndex = -1;
 		GetTree().CurrentScene.AddChild(afterimage);
@@ -701,13 +685,8 @@ public partial class Player : CharacterBody2D
 
 	private void OnDied()
 	{
+		_attackHitbox.Deactivate();
 		_state = PlayerState.Dead;
-		// End any active attack
-		if (_attackVisual.Visible)
-		{
-			EndAttack();
-		}
-		// Disable hurtbox so we don't take more damage
 		_hurtbox.SetDeferred("monitorable", false);
 
 		_effects?.Shake(6f, 0.4f);
@@ -715,78 +694,66 @@ public partial class Player : CharacterBody2D
 
 	private void SetupAnimations()
 	{
+		_sprite.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
+		_sprite.Scale = new Vector2(1.6f, 1.6f);
+		_sprite.Offset = new Vector2(0, 1);
+
+		var idleFrames = LoadSpriteSheet(SpritePath + "Human_Soldier_Sword_Shield_Idle-Sheet.png");
+		var walkFrames = LoadSpriteSheet(SpritePath + "Human_Soldier_Sword_Shield_Walk-Sheet.png");
+		var attackFrames = LoadSpriteSheet(SpritePath + "Human_Soldier_Sword_Shield_Attack1-Sheet.png");
+		var jumpFallFrames = LoadSpriteSheet(SpritePath + "Human_Soldier_Sword_Shield_Jump_Fall-Sheet.png");
+		var hurtFrames = LoadSpriteSheet(SpritePath + "Human_Soldier_Sword_Shield_Hurt-Sheet.png");
+		var deathFrames = LoadSpriteSheet(SpritePath + "Human_Soldier_Sword_Shield_Death-Sheet.png");
+
+		// Split Jump_Fall sheet: first 3 frames = jump, last 3 = fall
+		var jumpFrames = new[] { jumpFallFrames[0], jumpFallFrames[1], jumpFallFrames[2] };
+		var fallFrames = new[] { jumpFallFrames[3], jumpFallFrames[4], jumpFallFrames[5] };
+
 		var frames = new SpriteFrames();
 
-		// Idle (2 frames, 3 fps for slow bob)
-		frames.AddAnimation("idle");
-		frames.SetAnimationSpeed("idle", 3);
-		frames.SetAnimationLoop("idle", true);
-		var idle = AssetLoader.PlayerIdle();
-		foreach (var tex in idle)
-			frames.AddFrame("idle", tex);
+		AddAnim(frames, "idle", idleFrames, 6, true);
+		AddAnim(frames, "run", walkFrames, 10, true);
+		AddAnim(frames, "attack_forward", attackFrames, 30, false);
+		AddAnim(frames, "attack_up", attackFrames, 24, false);
+		AddAnim(frames, "attack_down", attackFrames, 36, false);
+		AddAnim(frames, "damaged", hurtFrames, 8, false);
+		AddAnim(frames, "death", deathFrames, 6, false);
+		AddAnim(frames, "jump", jumpFrames, 8, false);
+		AddAnim(frames, "fall", fallFrames, 8, true);
+		AddAnim(frames, "dash", new[] { walkFrames[0] }, 1, false);
+		AddAnim(frames, "wall_slide", new[] { idleFrames[0] }, 1, false);
 
-		// Run (4 frames, 10 fps)
-		frames.AddAnimation("run");
-		frames.SetAnimationSpeed("run", 10);
-		frames.SetAnimationLoop("run", true);
-		var run = AssetLoader.PlayerRun();
-		foreach (var tex in run)
-			frames.AddFrame("run", tex);
-
-		// Jump (1 frame)
-		frames.AddAnimation("jump");
-		frames.SetAnimationSpeed("jump", 1);
-		frames.SetAnimationLoop("jump", false);
-		frames.AddFrame("jump", AssetLoader.PlayerJump());
-
-		// Fall (1 frame)
-		frames.AddAnimation("fall");
-		frames.SetAnimationSpeed("fall", 1);
-		frames.SetAnimationLoop("fall", false);
-		frames.AddFrame("fall", AssetLoader.PlayerFall());
-
-		// Attack forward (used for all 3 combo steps)
-		frames.AddAnimation("attack_forward");
-		frames.SetAnimationSpeed("attack_forward", 1);
-		frames.SetAnimationLoop("attack_forward", false);
-		frames.AddFrame("attack_forward", AssetLoader.PlayerAttackForward());
-
-		// Attack up
-		frames.AddAnimation("attack_up");
-		frames.SetAnimationSpeed("attack_up", 1);
-		frames.SetAnimationLoop("attack_up", false);
-		frames.AddFrame("attack_up", AssetLoader.PlayerAttackUp());
-
-		// Attack down
-		frames.AddAnimation("attack_down");
-		frames.SetAnimationSpeed("attack_down", 1);
-		frames.SetAnimationLoop("attack_down", false);
-		frames.AddFrame("attack_down", AssetLoader.PlayerAttackDown());
-
-		// Dash
-		frames.AddAnimation("dash");
-		frames.SetAnimationSpeed("dash", 1);
-		frames.SetAnimationLoop("dash", false);
-		frames.AddFrame("dash", AssetLoader.PlayerDash());
-
-		// Wall slide
-		frames.AddAnimation("wall_slide");
-		frames.SetAnimationSpeed("wall_slide", 1);
-		frames.SetAnimationLoop("wall_slide", false);
-		frames.AddFrame("wall_slide", AssetLoader.PlayerWallSlide());
-
-		// Damaged
-		frames.AddAnimation("damaged");
-		frames.SetAnimationSpeed("damaged", 1);
-		frames.SetAnimationLoop("damaged", false);
-		frames.AddFrame("damaged", AssetLoader.PlayerDamaged());
-
-		// Remove the default animation that SpriteFrames creates
 		if (frames.HasAnimation("default"))
 			frames.RemoveAnimation("default");
 
 		_sprite.SpriteFrames = frames;
 		_sprite.Play("idle");
+	}
+
+	private static ImageTexture[] LoadSpriteSheet(string path)
+	{
+		var img = Image.LoadFromFile(ProjectSettings.GlobalizePath(path));
+		if (img == null)
+			return new[] { ImageTexture.CreateFromImage(Image.CreateEmpty(SpriteFrameSize, SpriteFrameSize, false, Image.Format.Rgba8)) };
+		int count = img.GetWidth() / SpriteFrameSize;
+		int h = img.GetHeight();
+		var textures = new ImageTexture[count];
+		for (int i = 0; i < count; i++)
+		{
+			var frame = Image.CreateEmpty(SpriteFrameSize, h, false, Image.Format.Rgba8);
+			frame.BlitRect(img, new Rect2I(i * SpriteFrameSize, 0, SpriteFrameSize, h), Vector2I.Zero);
+			textures[i] = ImageTexture.CreateFromImage(frame);
+		}
+		return textures;
+	}
+
+	private static void AddAnim(SpriteFrames frames, string name, ImageTexture[] textures, double fps, bool loop)
+	{
+		frames.AddAnimation(name);
+		frames.SetAnimationSpeed(name, fps);
+		frames.SetAnimationLoop(name, loop);
+		foreach (var tex in textures)
+			frames.AddFrame(name, tex);
 	}
 
 	private void UpdateAnimation()

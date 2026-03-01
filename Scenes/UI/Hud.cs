@@ -120,12 +120,6 @@ public partial class Hud : CanvasLayer
 		}
 	}
 
-	public override void _Process(double delta)
-	{
-		UpdateAbilityDisplay();
-		UpdateWeaponTierDisplay();
-	}
-
 	public override void _UnhandledInput(InputEvent @event)
 	{
 		if (@event.IsActionPressed("pause"))
@@ -325,6 +319,7 @@ public partial class Hud : CanvasLayer
 
 	private void OnAbilityUnlocked(string abilityName)
 	{
+		UpdateAbilityDisplay();
 		_saveConfirmLabel.Text = $"{abilityName} unlocked!";
 		_saveConfirmLabel.Modulate = new Color(1, 0.85f, 0.1f, 1);
 		var tween = CreateTween();
@@ -409,7 +404,8 @@ public partial class Hud : CanvasLayer
 
 	private static readonly Dictionary<string, Vector2> MapRoomPositions = new()
 	{
-		["main"] = new Vector2(160, 90),
+		["main"] = new Vector2(130, 90),
+		["catacombs"] = new Vector2(190, 90),
 	};
 
 	private readonly Dictionary<string, ColorRect> _mapRoomRects = new();
@@ -463,9 +459,11 @@ public partial class Hud : CanvasLayer
 
 	private void RefreshMapDisplay()
 	{
-		// Single room — always highlight as current
-		foreach (var (_, rect) in _mapRoomRects)
-			rect.Color = new Color(0.2f, 0.6f, 1f, 0.9f);
+		string currentLevel = _gameState.CurrentLevelId;
+		foreach (var (roomId, rect) in _mapRoomRects)
+			rect.Color = roomId == currentLevel
+				? new Color(0.2f, 0.6f, 1f, 0.9f)
+				: new Color(0.3f, 0.3f, 0.3f, 0.5f);
 	}
 
 	// ─── Pause Settings ─────────────────────────────────────────────

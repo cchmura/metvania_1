@@ -39,14 +39,16 @@ public partial class World : Node2D
 	private Vector2 _bossSpawnPosition;
 	private bool _bossActive;
 	private bool _bossDefeated;
-	private Guardian _boss;
+	private Node2D _boss;
+	private string _bossScenePath;
 	private Area2D _bossLockTrigger;
 
 	// Level transitions
 	private static readonly Dictionary<string, string> NextLevel = new()
 	{
 		["main"] = "catacombs",
-		["catacombs"] = null,
+		["catacombs"] = "level2",
+		["level2"] = null,
 	};
 	private ColorRect _fadeOverlay;
 	private bool _transitioning;
@@ -254,7 +256,7 @@ public partial class World : Node2D
 						break;
 
 					case SpawnMode.Marker:
-						HandleMarker(def.MarkerName, worldPos);
+						HandleMarker(def, worldPos);
 						break;
 
 					case SpawnMode.Scene:
@@ -278,9 +280,9 @@ public partial class World : Node2D
 		}
 	}
 
-	private void HandleMarker(string markerName, Vector2 worldPos)
+	private void HandleMarker(EntityDef def, Vector2 worldPos)
 	{
-		switch (markerName)
+		switch (def.MarkerName)
 		{
 			case "player_spawn":
 				_levelSpawnPosition = worldPos;
@@ -292,6 +294,8 @@ public partial class World : Node2D
 				break;
 			case "boss_spawn":
 				_bossSpawnPosition = worldPos;
+				if (!string.IsNullOrEmpty(def.ScenePath))
+					_bossScenePath = def.ScenePath;
 				break;
 		}
 	}
@@ -445,16 +449,22 @@ public partial class World : Node2D
 		for (int r = 0; r < rows; r++)
 			_tileMap.SetCell(new Vector2I(lockCol, r), 0, TileMapBuilder.SolidTile);
 
-		var bossScene = GD.Load<PackedScene>("res://Scenes/Enemies/Guardian.tscn");
-		_boss = bossScene.Instantiate<Guardian>();
+		string scenePath = _bossScenePath ?? "res://Scenes/Enemies/SlimeBoss.tscn";
+		var bossScene = GD.Load<PackedScene>(scenePath);
+		_boss = bossScene.Instantiate<Node2D>();
 		_boss.GlobalPosition = _bossSpawnPosition;
 		AddChild(_boss);
 
-		_boss.BossHealthChanged += OnBossHealthChanged;
-		_boss.BossDefeated += OnBossDefeated;
-
 		var bossHealth = _boss.GetNode<HealthComponent>("HealthComponent");
-		string bossName = _gameState.CurrentLevelId == "catacombs" ? "The Warden" : "The Guardian";
+		bossHealth.HealthChanged += OnBossHealthChanged;
+		bossHealth.Died += OnBossDefeated;
+
+		string bossName = _gameState.CurrentLevelId switch
+		{
+			"level2" => "The Executioner",
+			"catacombs" => "The Ooze",
+			_ => "The Slime",
+		};
 		_hud?.ShowBossHealthBar(bossName, bossHealth.CurrentHealth, bossHealth.MaxHealth);
 		_effectsManager?.Shake(4f, 0.3f);
 		_audioManager?.PlayMusic("boss");

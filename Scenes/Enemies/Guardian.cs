@@ -225,7 +225,7 @@ public partial class Guardian : EnemyBase
 
 		var proj1 = _projectileScene.Instantiate<Projectile>();
 		proj1.Init(baseDir);
-		proj1.GlobalPosition = GlobalPosition + new Vector2(0, -16);
+		proj1.GlobalPosition = GlobalPosition + new Vector2(0, -32);
 		GetTree().CurrentScene.AddChild(proj1);
 
 		if (_phase == BossPhase.Phase2)
@@ -235,7 +235,7 @@ public partial class Guardian : EnemyBase
 			var rotated = baseDir.Rotated(baseDir.X > 0 ? angle : -angle);
 			var proj2 = _projectileScene.Instantiate<Projectile>();
 			proj2.Init(rotated);
-			proj2.GlobalPosition = GlobalPosition + new Vector2(0, -16);
+			proj2.GlobalPosition = GlobalPosition + new Vector2(0, -32);
 			GetTree().CurrentScene.AddChild(proj2);
 		}
 	}
@@ -270,9 +270,9 @@ public partial class Guardian : EnemyBase
 
 		var shape = new CollisionShape2D();
 		var rect = new RectangleShape2D();
-		rect.Size = new Vector2(16, 12);
+		rect.Size = new Vector2(24, 16);
 		shape.Shape = rect;
-		shape.Position = new Vector2(0, -6);
+		shape.Position = new Vector2(0, -12);
 		hitbox.AddChild(shape);
 		wave.AddChild(hitbox);
 

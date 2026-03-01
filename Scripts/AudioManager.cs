@@ -165,11 +165,12 @@ public partial class AudioManager : Node
 
 		_currentTrack = trackName;
 		_musicFadeTween?.Kill();
-		_musicFadeTween = CreateTween();
-		_musicFadeTween.SetParallel(true);
 
 		var incoming = _musicUseA ? _musicPlayerA : _musicPlayerB;
 		var outgoing = _musicUseA ? _musicPlayerB : _musicPlayerA;
+
+		_musicFadeTween = CreateTween();
+		_musicFadeTween.SetParallel(true);
 
 		// Fade in incoming
 		incoming.Stream = stream;
@@ -180,6 +181,14 @@ public partial class AudioManager : Node
 		// Fade out outgoing
 		if (outgoing.Playing)
 			_musicFadeTween.TweenProperty(outgoing, "volume_db", -40f, 1.0f);
+
+		// Stop outgoing after fade completes so it doesn't loop at low volume
+		_musicFadeTween.Chain();
+		_musicFadeTween.TweenCallback(Callable.From(() =>
+		{
+			if (outgoing.Playing)
+				outgoing.Stop();
+		}));
 
 		_musicUseA = !_musicUseA;
 	}

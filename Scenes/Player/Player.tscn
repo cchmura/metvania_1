@@ -45,11 +45,3 @@ script = ExtResource("4")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
 position = Vector2(0, -16)
 shape = SubResource("RectangleShape2D_col")
-
-[node name="AttackVisual" type="ColorRect" parent="."]
-visible = false
-offset_left = -16.0
-offset_top = -28.0
-offset_right = 16.0
-offset_bottom = -4.0
-color = Color(1, 1, 1, 0.6)

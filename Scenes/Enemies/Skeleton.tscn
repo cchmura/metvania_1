@@ -6,7 +6,7 @@
 [ext_resource type="Script" path="res://Scripts/Components/Hurtbox.cs" id="4"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
-size = Vector2(12, 16)
+size = Vector2(24, 32)
 
 [node name="Skeleton" type="CharacterBody2D"]
 collision_layer = 4
@@ -15,11 +15,11 @@ script = ExtResource("1")
 ContactDamage = 1
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-position = Vector2(0, -8)
+position = Vector2(0, -16)
 shape = SubResource("RectangleShape2D_body")
 
 [node name="Sprite" type="Sprite2D" parent="."]
-position = Vector2(0, -8)
+position = Vector2(0, -16)
 
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("2")
@@ -34,7 +34,7 @@ script = ExtResource("3")
 Damage = 1
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="ContactHitbox"]
-position = Vector2(0, -8)
+position = Vector2(0, -16)
 shape = SubResource("RectangleShape2D_body")
 
 [node name="Hurtbox" type="Area2D" parent="."]
@@ -45,5 +45,5 @@ monitoring = false
 script = ExtResource("4")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
-position = Vector2(0, -8)
+position = Vector2(0, -16)
 shape = SubResource("RectangleShape2D_body")

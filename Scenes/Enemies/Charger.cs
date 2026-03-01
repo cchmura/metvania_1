@@ -30,13 +30,13 @@ public partial class Charger : EnemyBase
 		Sprite.Texture = AssetLoader.ChargerSprite();
 
 		_wallDetector = new RayCast2D();
-		_wallDetector.TargetPosition = new Vector2(10, 0);
+		_wallDetector.TargetPosition = new Vector2(16, 0);
 		_wallDetector.CollisionMask = 1;
 		_wallDetector.Enabled = true;
 		AddChild(_wallDetector);
 
 		_edgeDetector = new RayCast2D();
-		_edgeDetector.Position = new Vector2(8, 0);
+		_edgeDetector.Position = new Vector2(14, 0);
 		_edgeDetector.TargetPosition = new Vector2(0, 16);
 		_edgeDetector.CollisionMask = 1;
 		_edgeDetector.Enabled = true;
@@ -70,16 +70,16 @@ public partial class Charger : EnemyBase
 		{
 			case ChargerState.Patrol:
 				// Patrol like Crawler
-				_wallDetector.TargetPosition = new Vector2(10 * _direction, 0);
-				_edgeDetector.Position = new Vector2(8 * _direction, 0);
+				_wallDetector.TargetPosition = new Vector2(16 * _direction, 0);
+				_edgeDetector.Position = new Vector2(14 * _direction, 0);
 
 				if (IsOnFloor())
 				{
 					if (_wallDetector.IsColliding() || !_edgeDetector.IsColliding())
 					{
 						_direction *= -1;
-						_wallDetector.TargetPosition = new Vector2(10 * _direction, 0);
-						_edgeDetector.Position = new Vector2(8 * _direction, 0);
+						_wallDetector.TargetPosition = new Vector2(16 * _direction, 0);
+						_edgeDetector.Position = new Vector2(14 * _direction, 0);
 					}
 				}
 
@@ -122,14 +122,7 @@ public partial class Charger : EnemyBase
 				velocity.X = ChargeSpeed * _chargeDirection;
 				Sprite.Modulate = new Color(1f, 0.3f, 0.3f);
 
-				// Stop on wall hit
-				if (IsOnWall())
-				{
-					_chargerState = ChargerState.Stunned;
-					_stateTimer = StunDuration;
-					velocity.X = 0;
-				}
-				else if (_stateTimer <= 0)
+				if (IsOnWall() || _stateTimer <= 0)
 				{
 					_chargerState = ChargerState.Stunned;
 					_stateTimer = StunDuration;

@@ -24,14 +24,14 @@ public partial class Skeleton : EnemyBase
 
 		// Wall detector
 		_wallDetector = new RayCast2D();
-		_wallDetector.TargetPosition = new Vector2(10, 0);
+		_wallDetector.TargetPosition = new Vector2(16, 0);
 		_wallDetector.CollisionMask = 1;
 		_wallDetector.Enabled = true;
 		AddChild(_wallDetector);
 
 		// Edge detector
 		_edgeDetector = new RayCast2D();
-		_edgeDetector.Position = new Vector2(8, 0);
+		_edgeDetector.Position = new Vector2(14, 0);
 		_edgeDetector.TargetPosition = new Vector2(0, 16);
 		_edgeDetector.CollisionMask = 1;
 		_edgeDetector.Enabled = true;
@@ -99,8 +99,8 @@ public partial class Skeleton : EnemyBase
 		}
 
 		// Update ray directions
-		_wallDetector.TargetPosition = new Vector2(10 * _direction, 0);
-		_edgeDetector.Position = new Vector2(8 * _direction, 0);
+		_wallDetector.TargetPosition = new Vector2(16 * _direction, 0);
+		_edgeDetector.Position = new Vector2(14 * _direction, 0);
 
 		// Wall/edge detection
 		if (IsOnFloor())
@@ -108,8 +108,8 @@ public partial class Skeleton : EnemyBase
 			if (_wallDetector.IsColliding() || !_edgeDetector.IsColliding())
 			{
 				_direction *= -1;
-				_wallDetector.TargetPosition = new Vector2(10 * _direction, 0);
-				_edgeDetector.Position = new Vector2(8 * _direction, 0);
+				_wallDetector.TargetPosition = new Vector2(16 * _direction, 0);
+				_edgeDetector.Position = new Vector2(14 * _direction, 0);
 			}
 		}
 
@@ -125,7 +125,7 @@ public partial class Skeleton : EnemyBase
 		if (_target == null || !IsInstanceValid(_target)) return;
 
 		var bone = new BoneProjectile();
-		bone.GlobalPosition = GlobalPosition + new Vector2(_direction * 6, -12);
+		bone.GlobalPosition = GlobalPosition + new Vector2(_direction * 14, -24);
 
 		// Calculate arc velocity for ~0.6s flight
 		float flightTime = 0.6f;

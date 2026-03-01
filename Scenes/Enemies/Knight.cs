@@ -27,14 +27,14 @@ public partial class Knight : EnemyBase
 
 		// Wall detector
 		_wallDetector = new RayCast2D();
-		_wallDetector.TargetPosition = new Vector2(10, 0);
+		_wallDetector.TargetPosition = new Vector2(16, 0);
 		_wallDetector.CollisionMask = 1;
 		_wallDetector.Enabled = true;
 		AddChild(_wallDetector);
 
 		// Edge detector
 		_edgeDetector = new RayCast2D();
-		_edgeDetector.Position = new Vector2(8, 0);
+		_edgeDetector.Position = new Vector2(14, 0);
 		_edgeDetector.TargetPosition = new Vector2(0, 16);
 		_edgeDetector.CollisionMask = 1;
 		_edgeDetector.Enabled = true;
@@ -49,7 +49,7 @@ public partial class Knight : EnemyBase
 		var spearRect = new RectangleShape2D();
 		spearRect.Size = new Vector2(24, 8);
 		spearShape.Shape = spearRect;
-		spearShape.Position = new Vector2(18, -8);
+		spearShape.Position = new Vector2(24, -16);
 		_spearHitbox.AddChild(spearShape);
 		AddChild(_spearHitbox);
 		_spearHitbox.Deactivate();
@@ -103,8 +103,8 @@ public partial class Knight : EnemyBase
 	private void ProcessPatrol(float dt, ref Vector2 velocity)
 	{
 		// Update ray directions
-		_wallDetector.TargetPosition = new Vector2(10 * _direction, 0);
-		_edgeDetector.Position = new Vector2(8 * _direction, 0);
+		_wallDetector.TargetPosition = new Vector2(16 * _direction, 0);
+		_edgeDetector.Position = new Vector2(14 * _direction, 0);
 
 		// Wall/edge detection
 		if (IsOnFloor())
@@ -112,8 +112,8 @@ public partial class Knight : EnemyBase
 			if (_wallDetector.IsColliding() || !_edgeDetector.IsColliding())
 			{
 				_direction *= -1;
-				_wallDetector.TargetPosition = new Vector2(10 * _direction, 0);
-				_edgeDetector.Position = new Vector2(8 * _direction, 0);
+				_wallDetector.TargetPosition = new Vector2(16 * _direction, 0);
+				_edgeDetector.Position = new Vector2(14 * _direction, 0);
 			}
 		}
 
@@ -185,6 +185,6 @@ public partial class Knight : EnemyBase
 	private void UpdateSpearPosition()
 	{
 		var spearShape = _spearHitbox.GetChild<CollisionShape2D>(0);
-		spearShape.Position = new Vector2(18 * _direction, -8);
+		spearShape.Position = new Vector2(24 * _direction, -16);
 	}
 }

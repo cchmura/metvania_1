@@ -27,7 +27,8 @@ public static class EntityRegistry
 		// ─── Markers ────────────────────────────────────────────
 		['P'] = new() { Mode = SpawnMode.Marker, MarkerName = "player_spawn" },
 		['L'] = new() { Mode = SpawnMode.Marker, MarkerName = "boss_lock" },
-		['B'] = new() { Mode = SpawnMode.Marker, MarkerName = "boss_spawn" },
+		['B'] = new() { Mode = SpawnMode.Marker, MarkerName = "boss_spawn", ScenePath = "res://Scenes/Enemies/SlimeBoss.tscn" },
+		['E'] = new() { Mode = SpawnMode.Marker, MarkerName = "boss_spawn", ScenePath = "res://Scenes/Enemies/Executioner.tscn" },
 
 		// ─── Scenes (objects) ───────────────────────────────────
 		['S'] = new() { Mode = SpawnMode.Scene, ScenePath = "res://Scenes/Objects/SavePoint.tscn" },

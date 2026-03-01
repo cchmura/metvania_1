@@ -98,7 +98,7 @@ public partial class Shielder : EnemyBase
 
 			// Check if hit is from the front (same side as facing)
 			bool fromRight = sourceX > GlobalPosition.X;
-			bool fromAbove = sourceY < GlobalPosition.Y - 12;
+			bool fromAbove = sourceY < GlobalPosition.Y - 20;
 
 			if (fromAbove)
 			{
@@ -115,7 +115,7 @@ public partial class Shielder : EnemyBase
 		{
 			// Deflect!
 			var effects = GetNodeOrNull<EffectsManager>("/root/EffectsManager");
-			effects?.SpawnParticles(GlobalPosition + new Vector2(_facingDir * 8, -6), ParticleType.Deflect);
+			effects?.SpawnParticles(GlobalPosition + new Vector2(_facingDir * 14, -12), ParticleType.Deflect);
 			var audio = GetNodeOrNull<AudioManager>("/root/AudioManager");
 			audio?.Play("deflect");
 		}

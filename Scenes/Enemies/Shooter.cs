@@ -67,7 +67,7 @@ public partial class Shooter : EnemyBase
 		var projectile = _projectileScene.Instantiate<Projectile>();
 		var aimDir = (_target.GlobalPosition - GlobalPosition).Normalized();
 		projectile.Init(aimDir);
-		projectile.GlobalPosition = GlobalPosition + new Vector2(0, -6);
+		projectile.GlobalPosition = GlobalPosition + new Vector2(0, -12);
 		GetTree().CurrentScene.AddChild(projectile);
 
 		var audio = GetNodeOrNull<AudioManager>("/root/AudioManager");
