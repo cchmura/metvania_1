@@ -17,12 +17,8 @@ script = ExtResource("1")
 position = Vector2(0, -12)
 shape = SubResource("RectangleShape2D_col")
 
-[node name="Sprite" type="ColorRect" parent="."]
-offset_left = -7.0
-offset_top = -24.0
-offset_right = 7.0
-offset_bottom = 0.0
-color = Color(0.2, 0.6, 0.9, 1)
+[node name="Sprite" type="AnimatedSprite2D" parent="."]
+position = Vector2(0, -12)
 
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("2")

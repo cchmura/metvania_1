@@ -9,7 +9,7 @@ public partial class EnemyBase : CharacterBody2D
 	protected HealthComponent Health;
 	protected Hitbox ContactHitbox;
 	protected Hurtbox EnemyHurtbox;
-	protected ColorRect Sprite;
+	protected Sprite2D Sprite;
 	protected bool IsDead;
 
 	public override void _Ready()
@@ -19,7 +19,7 @@ public partial class EnemyBase : CharacterBody2D
 		Health = GetNode<HealthComponent>("HealthComponent");
 		ContactHitbox = GetNode<Hitbox>("ContactHitbox");
 		EnemyHurtbox = GetNode<Hurtbox>("Hurtbox");
-		Sprite = GetNode<ColorRect>("Sprite");
+		Sprite = GetNode<Sprite2D>("Sprite");
 
 		// Wire hurtbox to health
 		EnemyHurtbox.Health = Health;

@@ -11,6 +11,9 @@ public partial class AbilityOrb : Area2D
 
 	public override void _Ready()
 	{
+		var sprite = GetNode<Sprite2D>("Sprite");
+		sprite.Texture = SpriteFactory.AbilityOrbSprite();
+
 		_gameState = GetNode<GameState>("/root/GameState");
 
 		if (_gameState.IsCollected(OrbId))

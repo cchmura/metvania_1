@@ -64,6 +64,12 @@ public partial class HealthComponent : Node
 		EmitSignal(SignalName.HealthChanged, CurrentHealth, MaxHealth);
 	}
 
+	public void ForceInvincible(float duration)
+	{
+		IsInvincible = true;
+		_invincibilityTimer = Mathf.Max(_invincibilityTimer, duration);
+	}
+
 	public void Reset()
 	{
 		CurrentHealth = MaxHealth;

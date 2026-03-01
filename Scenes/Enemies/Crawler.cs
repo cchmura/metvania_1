@@ -4,7 +4,7 @@ namespace metvania_1;
 
 public partial class Crawler : EnemyBase
 {
-	private const float MoveSpeed = 40f;
+	private const float MoveSpeed = 35f;
 	private const float Gravity = 800f;
 
 	private int _direction = 1;
@@ -13,6 +13,8 @@ public partial class Crawler : EnemyBase
 
 	protected override void EnemyInit()
 	{
+		Sprite.Texture = SpriteFactory.CrawlerSprite();
+
 		// Wall detector — horizontal ray in movement direction
 		_wallDetector = new RayCast2D();
 		_wallDetector.TargetPosition = new Vector2(10, 0);
@@ -64,11 +66,7 @@ public partial class Crawler : EnemyBase
 		velocity.X = MoveSpeed * _direction;
 
 		// Flip sprite
-		Sprite.Scale = new Vector2(_direction, 1);
-		if (_direction == -1)
-			Sprite.Position = new Vector2(6, -12);
-		else
-			Sprite.Position = new Vector2(-6, -12);
+		Sprite.FlipH = (_direction == -1);
 
 		Velocity = velocity;
 		MoveAndSlide();

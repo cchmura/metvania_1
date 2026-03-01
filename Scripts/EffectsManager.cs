@@ -8,6 +8,10 @@ public enum ParticleType
 	EnemyDeath,
 	DustPuff,
 	PogoSpark,
+	WallSlide,
+	DashTrail,
+	Deflect,
+	BossSlam,
 }
 
 public partial class EffectsManager : Node
@@ -137,6 +141,58 @@ public partial class EffectsManager : Node
 				particles.ScaleAmountMin = 1.5f;
 				particles.ScaleAmountMax = 2.5f;
 				particles.Color = new Color(1f, 0.9f, 0.3f);
+				break;
+
+			case ParticleType.WallSlide:
+				particles.Amount = 2;
+				particles.Lifetime = 0.12;
+				particles.Direction = new Vector2(0, 1);
+				particles.Spread = 20f;
+				particles.InitialVelocityMin = 15f;
+				particles.InitialVelocityMax = 30f;
+				particles.Gravity = Vector2.Zero;
+				particles.ScaleAmountMin = 1f;
+				particles.ScaleAmountMax = 1.5f;
+				particles.Color = new Color(0.6f, 0.5f, 0.4f);
+				break;
+
+			case ParticleType.DashTrail:
+				particles.Amount = 6;
+				particles.Lifetime = 0.2;
+				particles.Direction = Vector2.Zero;
+				particles.Spread = 180f;
+				particles.InitialVelocityMin = 10f;
+				particles.InitialVelocityMax = 30f;
+				particles.Gravity = Vector2.Zero;
+				particles.ScaleAmountMin = 1.5f;
+				particles.ScaleAmountMax = 2.5f;
+				particles.Color = new Color(0.4f, 0.7f, 1f);
+				break;
+
+			case ParticleType.Deflect:
+				particles.Amount = 10;
+				particles.Lifetime = 0.2;
+				particles.Direction = Vector2.Zero;
+				particles.Spread = 180f;
+				particles.InitialVelocityMin = 100f;
+				particles.InitialVelocityMax = 180f;
+				particles.Gravity = Vector2.Zero;
+				particles.ScaleAmountMin = 1.5f;
+				particles.ScaleAmountMax = 2.5f;
+				particles.Color = new Color(0.7f, 0.8f, 1f);
+				break;
+
+			case ParticleType.BossSlam:
+				particles.Amount = 16;
+				particles.Lifetime = 0.3;
+				particles.Direction = new Vector2(0, -1);
+				particles.Spread = 60f;
+				particles.InitialVelocityMin = 80f;
+				particles.InitialVelocityMax = 160f;
+				particles.Gravity = new Vector2(0, 300);
+				particles.ScaleAmountMin = 2f;
+				particles.ScaleAmountMax = 4f;
+				particles.Color = new Color(0.6f, 0.3f, 0.1f);
 				break;
 		}
 

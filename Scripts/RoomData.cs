@@ -1,180 +1,148 @@
+using System.Collections.Generic;
+
 namespace metvania_1;
 
 /// <summary>
-/// Single scrolling level: 150 columns x 22 rows (2400x352 at 16px tiles).
-/// Built from 5 sections of 30 columns each, concatenated per row.
+/// Single-room level data (Castlevania-style linear stage).
 /// # = solid, = = one-way, . = background
-/// P = player spawn, O = ability orb, S = save point, G = goal
-/// c = crawler enemy, f = flyer enemy
+/// P = player spawn, O = ability orb, D = dash orb, S = save point, G = goal
+/// c = crawler, f = flyer, s = shooter, r = charger, h = shielder, d = dropper
+/// b = bat, k = skeleton, g = ghost, n = knight
+/// x = floor spikes, B = boss spawn, L = boss lock trigger
+/// H = horizontal moving platform, V = vertical moving platform, F = falling platform
+/// M = max health upgrade, C = breakable candle
 /// </summary>
 public static class RoomData
 {
-	// Section 1 (cols 0-29): Gentle Start
-	// Left wall, player spawn, one crawler, one flyer.
-	// 4-tile gap in the floor teaches basic pit jumping.
-	private static readonly string[] Section1 = new[]
+	public class RoomDef
 	{
-		"##############################",  // row 0  — ceiling
-		"#.............................",  // row 1
-		"#.............................",  // row 2
-		"#.............................",  // row 3
-		"#.............................",  // row 4
-		"#.............................",  // row 5
-		"#.............................",  // row 6
-		"#.............................",  // row 7
-		"#.............................",  // row 8
-		"#.............................",  // row 9
-		"#.............................",  // row 10
-		"#.............................",  // row 11
-		"#.......f.....................",  // row 12 — flyer
-		"#.............................",  // row 13
-		"#.............................",  // row 14
-		"#.............................",  // row 15
-		"#.............................",  // row 16
-		"#..........c..................",  // row 17 — crawler
-		"#.............................",  // row 18
-		"#..P..........................",  // row 19 — player spawn
-		"############....##############",  // row 20 — floor, 4-tile gap
-		"############....##############",  // row 21
+		public string Id;
+		public string DisplayName;
+		public string[] Layout;
+	}
+
+	// ─── Zone Layouts (24×11 each) ────────────────────────────────
+
+	// Zone 1: Courtyard (open sky)
+	private static readonly string[] Zone1 = new[]
+	{
+		"#.......................",  // row 0
+		"........................",  // row 1
+		"........................",  // row 2
+		"........................",  // row 3
+		".............f.....b....",  // row 4
+		"........................",  // row 5
+		"........................",  // row 6
+		"........................",  // row 7
+		"..P.....C...c.....c.....",  // row 8
+		"########################",  // row 9
+		"########################",  // row 10
 	};
 
-	// Section 2 (cols 30-59): Stepping Stones
-	// Two 5-tile gaps, one-way platforms above for safety.
-	// Crawlers on ground, flyer in the air.
-	private static readonly string[] Section2 = new[]
+	// Zone 2: Castle Entrance (ceiling starts)
+	private static readonly string[] Zone2 = new[]
 	{
-		"##############################",  // row 0
-		"..............................",  // row 1
-		"..............................",  // row 2
-		"..............................",  // row 3
-		"..............................",  // row 4
-		"..............................",  // row 5
-		"..............................",  // row 6
-		"..............................",  // row 7
-		"..............................",  // row 8
-		"..............................",  // row 9
-		"..............................",  // row 10
-		"..............................",  // row 11
-		".............f................",  // row 12 — flyer
-		"..............................",  // row 13
-		"..............................",  // row 14
-		"..............................",  // row 15
-		"....=====......=====..........",  // row 16 — one-way platforms above gaps
-		".c...........c........c.......",  // row 17 — crawlers on ground
-		"..............................",  // row 18
-		"..............................",  // row 19
-		"####.....######.....##########",  // row 20 — floor, two 5-tile gaps
-		"####.....######.....##########",  // row 21
+		"########################",  // row 0
+		"........................",  // row 1
+		"..........====..........",  // row 2
+		"..............b.........",  // row 3
+		"............f...........",  // row 4
+		".......====.............",  // row 5
+		"........................",  // row 6
+		".S...............C......",  // row 7
+		"....c..x....k...c.......",  // row 8
+		"####..####..############",  // row 9
+		"########################",  // row 10
 	};
 
-	// Section 3 (cols 60-89): The Shrine
-	// Save point on left ground. Ascending one-way staircase to double jump orb.
-	// 13-tile gap in floor — requires double jump to cross.
-	private static readonly string[] Section3 = new[]
+	// Zone 3: Great Hall (enclosed)
+	private static readonly string[] Zone3 = new[]
 	{
-		"##############################",  // row 0
-		"..............................",  // row 1
-		"..............................",  // row 2
-		"..............................",  // row 3
-		"...........O..................",  // row 4  — double jump orb
-		"..........#####...............",  // row 5  — orb pedestal
-		"..............................",  // row 6
-		".......====...................",  // row 7  — ascending platform
-		"..............................",  // row 8
-		"....====......................",  // row 9  — ascending platform
-		"..............................",  // row 10
-		".====.........................",  // row 11 — ascending platform
-		"..............................",  // row 12
-		"..............................",  // row 13
-		"..............................",  // row 14
-		"...===........................",  // row 15 — first step up from ground
-		"..............................",  // row 16
-		"..............................",  // row 17
-		"..............................",  // row 18
-		"..S...........................",  // row 19 — save point
-		"#######.............##########",  // row 20 — floor, 13-tile gap
-		"#######.............##########",  // row 21
+		"########################",  // row 0
+		"........................",  // row 1
+		"..====..........====....",  // row 2
+		".........g..............",  // row 3
+		"......O.....s...........",  // row 4
+		"..........H.............",  // row 5
+		"...........h.....C......",  // row 6
+		"........................",  // row 7
+		"..r........n.....c......",  // row 8
+		"########################",  // row 9
+		"########################",  // row 10
 	};
 
-	// Section 4 (cols 90-119): Deep Pits
-	// Two 8-tile gaps, one-way platforms above, crawlers and flyers.
-	// Tests double jump mastery.
-	private static readonly string[] Section4 = new[]
+	// Zone 4: Inner Corridor
+	private static readonly string[] Zone4 = new[]
 	{
-		"##############################",  // row 0
-		"..............................",  // row 1
-		"..............................",  // row 2
-		"..............................",  // row 3
-		"..............................",  // row 4
-		"..............................",  // row 5
-		"..............................",  // row 6
-		"..............................",  // row 7
-		"..............................",  // row 8
-		"..............................",  // row 9
-		"..............................",  // row 10
-		"..............................",  // row 11
-		"......f...........f...........",  // row 12 — flyers
-		"..............................",  // row 13
-		"......====........====........",  // row 14 — one-way platforms above gaps
-		"..............................",  // row 15
-		"..............................",  // row 16
-		"..c..........c..........c.....",  // row 17 — crawlers on ground
-		"..............................",  // row 18
-		"..............................",  // row 19
-		"####........####........######",  // row 20 — floor, two 8-tile gaps
-		"####........####........######",  // row 21
+		"########################",  // row 0
+		"........................",  // row 1
+		"..====..........d.......",  // row 2
+		"...........b............",  // row 3
+		"......D.................",  // row 4
+		"..........F.............",  // row 5
+		".......s.......g........",  // row 6
+		"...C....................",  // row 7
+		"..k.x..x......k...c.x...",  // row 8
+		"####..####..####..######",  // row 9
+		"########################",  // row 10
 	};
 
-	// Section 5 (cols 120-149): The Gauntlet
-	// Right wall, 13-tile gap requiring double jump, goal near right wall.
-	private static readonly string[] Section5 = new[]
+	// Zone 5: Boss Chamber
+	private static readonly string[] Zone5 = new[]
 	{
-		"##############################",  // row 0
-		"............................##",  // row 1
-		"............................##",  // row 2
-		"............................##",  // row 3
-		"............................##",  // row 4
-		"............................##",  // row 5
-		"............................##",  // row 6
-		"............................##",  // row 7
-		"............................##",  // row 8
-		"............................##",  // row 9
-		"............................##",  // row 10
-		"............................##",  // row 11
-		"............................##",  // row 12
-		"............................##",  // row 13
-		"............................##",  // row 14
-		"............................##",  // row 15
-		"............................##",  // row 16
-		"......................c.....##",  // row 17 — crawler guarding goal
-		"............................##",  // row 18
-		"..................G.........##",  // row 19 — goal
-		"#####.............############",  // row 20 — floor, 13-tile gap
-		"#####.............############",  // row 21
+		"########################",  // row 0
+		".......................#",  // row 1
+		".......................#",  // row 2
+		".......................#",  // row 3
+		".......................#",  // row 4
+		".......................#",  // row 5
+		".......................#",  // row 6
+		".......................#",  // row 7
+		"..L........B...........#",  // row 8
+		"########################",  // row 9
+		"########################",  // row 10
 	};
 
-	/// <summary>Combined level array (width x height derived from section data).</summary>
+	/// <summary>Combined main level array (120×11).</summary>
 	public static readonly string[] Level = BuildLevel();
+
+	/// <summary>Room registry.</summary>
+	public static readonly Dictionary<string, RoomDef> Rooms = BuildRooms();
 
 	public static int LevelWidthTiles => Level[0].Length;
 	public static int LevelHeightTiles => Level.Length;
 
 	private static string[] BuildLevel()
 	{
-		var sections = new[] { Section1, Section2, Section3, Section4, Section5 };
-		int rows = Section1.Length;
+		var zones = new[] { Zone1, Zone2, Zone3, Zone4, Zone5 };
+		int rows = Zone1.Length;
 		var result = new string[rows];
 
 		for (int row = 0; row < rows; row++)
 		{
-			var sb = new System.Text.StringBuilder(150);
-			foreach (var section in sections)
+			var sb = new System.Text.StringBuilder(120);
+			foreach (var zone in zones)
 			{
-				sb.Append(section[row]);
+				sb.Append(zone[row]);
 			}
 			result[row] = sb.ToString();
 		}
 
 		return result;
+	}
+
+	private static Dictionary<string, RoomDef> BuildRooms()
+	{
+		var rooms = new Dictionary<string, RoomDef>();
+
+		var main = new RoomDef
+		{
+			Id = "main",
+			DisplayName = "The Depths",
+			Layout = BuildLevel(),
+		};
+		rooms["main"] = main;
+
+		return rooms;
 	}
 }

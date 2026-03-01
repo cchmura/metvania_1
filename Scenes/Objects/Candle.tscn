@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://candle000001"]
+
+[ext_resource type="Script" path="res://Scenes/Objects/Candle.cs" id="1"]
+
+[node name="Candle" type="StaticBody2D"]
+script = ExtResource("1")

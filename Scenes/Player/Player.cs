@@ -10,6 +10,7 @@ public partial class Player : CharacterBody2D
 		Attacking,
 		Damaged,
 		Dead,
+		Dashing,
 	}
 
 	private enum AttackDirection
@@ -29,6 +30,17 @@ public partial class Player : CharacterBody2D
 	private const float CoyoteTime = 0.1f;
 	private const float JumpBufferTime = 0.1f;
 
+	// Wall slide/jump constants
+	private const float WallSlideMaxSpeed = 50f;
+	private const float WallJumpHorizontalImpulse = 200f;
+	private const float WallJumpVerticalImpulse = -350f;
+	private const float WallJumpInputLockDuration = 0.12f;
+
+	// Dash constants
+	private const float DashSpeed = 800f;
+	private const float DashDuration = 0.15f;
+	private const float DashCooldown = 0.4f;
+
 	// Combat constants
 	private const float AttackActiveDuration = 0.25f;
 	private const float AttackCooldown = 0.35f;
@@ -36,6 +48,14 @@ public partial class Player : CharacterBody2D
 	private const float KnockbackSpeed = 150f;
 	private const float KnockbackDuration = 0.2f;
 	private const float InvincibilityFlashRate = 0.08f;
+
+	// Combo constants
+	private const float Combo1ActiveDuration = 0.2f;
+	private const float Combo2ActiveDuration = 0.2f;
+	private const float Combo3ActiveDuration = 0.3f;
+	private const float ComboWindowDuration = 0.35f;
+	private const float ComboEndCooldown = 0.4f;
+	private const int Combo3Damage = 2;
 
 	// State
 	private PlayerState _state = PlayerState.Normal;
@@ -54,14 +74,38 @@ public partial class Player : CharacterBody2D
 	private float _flashTimer;
 	private bool _pogoThisAttack;
 
+	// Combo state
+	private int _comboStep; // 0 = none, 1-3 = combo hit
+	private float _comboWindowTimer;
+	private bool _comboQueued;
+
+	// Dash state
+	private float _dashTimer;
+	private float _dashCooldownTimer;
+	private bool _usedAirDash;
+	private int _dashDirection;
+	private float _dashAfterimageTimer;
+
+	// Wall slide/jump state
+	private bool _isWallSliding;
+	private int _wallDirection; // -1 left, 1 right, 0 none
+	private float _wallJumpInputLockTimer;
+	private float _wallSlideParticleTimer;
+	private bool _wallSlideSoundPlayed;
+	private RayCast2D _wallRayLeft;
+	private RayCast2D _wallRayRight;
+
 	// Landing detection
 	private bool _wasAirborne;
+
+	// Weapon tier
+	private int WeaponBonus => _gameState.WeaponTier - 1;
 
 	// Node references
 	private GameState _gameState;
 	private EffectsManager _effects;
 	private AudioManager _audio;
-	private ColorRect _sprite;
+	private AnimatedSprite2D _sprite;
 	private HealthComponent _healthComponent;
 	private Hitbox _attackHitbox;
 	private Hurtbox _hurtbox;
@@ -73,14 +117,31 @@ public partial class Player : CharacterBody2D
 		_gameState = GetNode<GameState>("/root/GameState");
 		_effects = GetNodeOrNull<EffectsManager>("/root/EffectsManager");
 		_audio = GetNodeOrNull<AudioManager>("/root/AudioManager");
-		_sprite = GetNode<ColorRect>("Sprite");
+		_sprite = GetNode<AnimatedSprite2D>("Sprite");
+		SetupAnimations();
 		_healthComponent = GetNode<HealthComponent>("HealthComponent");
 		_attackHitbox = GetNode<Hitbox>("AttackHitbox");
 		_hurtbox = GetNode<Hurtbox>("Hurtbox");
 		_attackShape = _attackHitbox.GetNode<CollisionShape2D>("CollisionShape2D");
+		// Ensure attack shape has its own RectangleShape2D so resizing
+		// doesn't mutate the player body's shared shape resource.
+		_attackShape.Shape = new RectangleShape2D { Size = new Vector2(26, 16) };
 		_attackVisual = GetNode<ColorRect>("AttackVisual");
 
 		AddToGroup("player");
+
+		// Wall detection raycasts (player body half-width is 7px + 2px margin = 9px reach)
+		_wallRayLeft = new RayCast2D();
+		_wallRayLeft.Position = new Vector2(0, -12);
+		_wallRayLeft.TargetPosition = new Vector2(-9, 0);
+		_wallRayLeft.CollisionMask = 1; // World only
+		AddChild(_wallRayLeft);
+
+		_wallRayRight = new RayCast2D();
+		_wallRayRight.Position = new Vector2(0, -12);
+		_wallRayRight.TargetPosition = new Vector2(9, 0);
+		_wallRayRight.CollisionMask = 1; // World only
+		AddChild(_wallRayRight);
 
 		// Wire hurtbox to health component
 		_hurtbox.Health = _healthComponent;
@@ -106,6 +167,10 @@ public partial class Player : CharacterBody2D
 			case PlayerState.Attacking:
 				ProcessMovement(dt);
 				ProcessAttack(dt);
+				ProcessDashInput();
+				break;
+			case PlayerState.Dashing:
+				ProcessDash(dt);
 				break;
 			case PlayerState.Damaged:
 				ProcessKnockback(dt);
@@ -155,6 +220,54 @@ public partial class Player : CharacterBody2D
 		{
 			_coyoteTimer = CoyoteTime;
 			_usedDoubleJump = false;
+			_usedAirDash = false;
+		}
+
+		// Wall jump input lock timer
+		_wallJumpInputLockTimer -= dt;
+
+		// Wall slide detection
+		_isWallSliding = false;
+		_wallDirection = 0;
+		if (!onFloor && velocity.Y > 0 && _wallJumpInputLockTimer <= 0)
+		{
+			float wallInput = Input.GetAxis("move_left", "move_right");
+			if (wallInput < -0.1f && _wallRayLeft.IsColliding())
+			{
+				_isWallSliding = true;
+				_wallDirection = -1;
+			}
+			else if (wallInput > 0.1f && _wallRayRight.IsColliding())
+			{
+				_isWallSliding = true;
+				_wallDirection = 1;
+			}
+		}
+
+		if (_isWallSliding)
+		{
+			velocity.Y = Mathf.Min(velocity.Y, WallSlideMaxSpeed);
+			_usedDoubleJump = false;
+			_usedAirDash = false;
+
+			// Wall slide particles
+			_wallSlideParticleTimer -= dt;
+			if (_wallSlideParticleTimer <= 0)
+			{
+				_wallSlideParticleTimer = 0.08f;
+				_effects?.SpawnParticles(GlobalPosition + new Vector2(_wallDirection * 7, -12), ParticleType.WallSlide);
+			}
+
+			// Play slide sound once on start
+			if (!_wallSlideSoundPlayed)
+			{
+				_audio?.Play("wall_slide");
+				_wallSlideSoundPlayed = true;
+			}
+		}
+		else
+		{
+			_wallSlideSoundPlayed = false;
 		}
 
 		// Jump buffer
@@ -177,6 +290,19 @@ public partial class Player : CharacterBody2D
 				_coyoteTimer = 0;
 				_audio?.Play("jump");
 				_effects?.SpawnParticles(GlobalPosition, ParticleType.DustPuff);
+			}
+			else if (_isWallSliding)
+			{
+				// Wall jump
+				velocity.Y = WallJumpVerticalImpulse;
+				velocity.X = -_wallDirection * WallJumpHorizontalImpulse;
+				_jumpBufferTimer = 0;
+				_wallJumpInputLockTimer = WallJumpInputLockDuration;
+				_facingDirection = -_wallDirection;
+				_isWallSliding = false;
+				_wallDirection = 0;
+				_audio?.Play("jump");
+				_effects?.SpawnParticles(GlobalPosition + new Vector2(_wallDirection * 7, -12), ParticleType.DustPuff);
 			}
 			else if (_hasDoubleJump && !_usedDoubleJump)
 			{
@@ -210,26 +336,77 @@ public partial class Player : CharacterBody2D
 		}
 
 		// Facing direction (flip sprite)
-		_sprite.Scale = new Vector2(_facingDirection, 1);
-		if (_facingDirection == -1)
-			_sprite.Position = new Vector2(7, -24);
-		else
-			_sprite.Position = new Vector2(-7, -24);
+		_sprite.FlipH = (_facingDirection == -1);
 
 		Velocity = velocity;
 		MoveAndSlide();
+
+		UpdateAnimation();
 	}
 
 	private void ProcessAttack(float dt)
 	{
 		_attackCooldownTimer -= dt;
 
+		// Combo window (waiting for next J press between combo hits)
+		if (_comboWindowTimer > 0)
+		{
+			_comboWindowTimer -= dt;
+
+			if (Input.IsActionJustPressed("attack"))
+			{
+				// Advance combo
+				_comboWindowTimer = 0;
+				_comboStep++;
+				ActivateComboHit();
+				return;
+			}
+
+			if (_comboWindowTimer <= 0)
+			{
+				// Window expired — end combo
+				EndCombo();
+				return;
+			}
+			return;
+		}
+
 		if (_state == PlayerState.Attacking)
 		{
+			// Queue next combo hit during active frames
+			if (_comboStep > 0 && _comboStep < 3 && _attackDir == AttackDirection.Forward)
+			{
+				if (Input.IsActionJustPressed("attack"))
+				{
+					_comboQueued = true;
+				}
+			}
+
 			_attackTimer -= dt;
 			if (_attackTimer <= 0)
 			{
-				EndAttack();
+				if (_attackDir == AttackDirection.Forward && _comboStep > 0 && _comboStep < 3)
+				{
+					if (_comboQueued)
+					{
+						// Immediately advance combo
+						_comboQueued = false;
+						_comboStep++;
+						ActivateComboHit();
+					}
+					else
+					{
+						// Enter combo window
+						_attackHitbox.Deactivate();
+						_attackVisual.Visible = false;
+						_state = PlayerState.Normal;
+						_comboWindowTimer = ComboWindowDuration;
+					}
+				}
+				else
+				{
+					EndCombo();
+				}
 			}
 			return;
 		}
@@ -244,42 +421,90 @@ public partial class Player : CharacterBody2D
 	private void StartAttack()
 	{
 		_state = PlayerState.Attacking;
-		_attackTimer = AttackActiveDuration;
-		_attackCooldownTimer = AttackCooldown;
 		_pogoThisAttack = false;
-		_audio?.Play("slash");
 
 		// Determine direction
 		if (Input.IsActionPressed("move_up"))
 		{
 			_attackDir = AttackDirection.Up;
+			_comboStep = 0; // No combo for up/down
 		}
 		else if (Input.IsActionPressed("move_down") && !IsOnFloor())
 		{
 			_attackDir = AttackDirection.Down;
+			_comboStep = 0; // No combo for up/down
 		}
 		else
 		{
 			_attackDir = AttackDirection.Forward;
+			_comboStep = 1;
 		}
 
-		// Position hitbox and visual
-		PositionAttack();
-		_attackHitbox.Activate();
-		_attackVisual.Visible = true;
+		if (_attackDir == AttackDirection.Forward)
+		{
+			ActivateComboHit();
+		}
+		else
+		{
+			// Up/Down: single hit, original behavior
+			_attackTimer = AttackActiveDuration;
+			_attackCooldownTimer = AttackCooldown;
+			_attackHitbox.Damage = 1 + WeaponBonus;
+			_audio?.Play("slash");
+			PositionSingleAttack();
+			_attackHitbox.Activate();
+			_attackVisual.Visible = true;
+		}
 	}
 
-	private void PositionAttack()
+	private void ActivateComboHit()
 	{
+		_state = PlayerState.Attacking;
+		_comboQueued = false;
+		_pogoThisAttack = false;
+
 		var shape = _attackShape.Shape as RectangleShape2D;
-		switch (_attackDir)
+
+		switch (_comboStep)
 		{
-			case AttackDirection.Forward:
+			case 1:
 				shape.Size = new Vector2(26, 16);
 				_attackShape.Position = new Vector2(20 * _facingDirection, -12);
 				_attackVisual.Size = new Vector2(26, 16);
 				_attackVisual.Position = new Vector2(20 * _facingDirection - 13, -20);
+				_attackTimer = Combo1ActiveDuration;
+				_attackHitbox.Damage = 1 + WeaponBonus;
+				_audio?.Play("slash");
 				break;
+			case 2:
+				shape.Size = new Vector2(30, 16);
+				_attackShape.Position = new Vector2(22 * _facingDirection, -12);
+				_attackVisual.Size = new Vector2(30, 16);
+				_attackVisual.Position = new Vector2(22 * _facingDirection - 15, -20);
+				_attackTimer = Combo2ActiveDuration;
+				_attackHitbox.Damage = 1 + WeaponBonus;
+				_audio?.Play("slash");
+				break;
+			case 3:
+				shape.Size = new Vector2(32, 20);
+				_attackShape.Position = new Vector2(24 * _facingDirection, -12);
+				_attackVisual.Size = new Vector2(32, 20);
+				_attackVisual.Position = new Vector2(24 * _facingDirection - 16, -22);
+				_attackTimer = Combo3ActiveDuration;
+				_attackHitbox.Damage = Combo3Damage + WeaponBonus;
+				_audio?.Play("heavy_slash");
+				break;
+		}
+
+		_attackHitbox.Activate();
+		_attackVisual.Visible = true;
+	}
+
+	private void PositionSingleAttack()
+	{
+		var shape = _attackShape.Shape as RectangleShape2D;
+		switch (_attackDir)
+		{
 			case AttackDirection.Up:
 				shape.Size = new Vector2(16, 26);
 				_attackShape.Position = new Vector2(0, -30);
@@ -300,6 +525,17 @@ public partial class Player : CharacterBody2D
 		_state = PlayerState.Normal;
 		_attackHitbox.Deactivate();
 		_attackVisual.Visible = false;
+	}
+
+	private void EndCombo()
+	{
+		bool wasCombo = _comboStep > 0;
+		_comboStep = 0;
+		_comboWindowTimer = 0;
+		_comboQueued = false;
+		_attackHitbox.Damage = 1 + WeaponBonus;
+		_attackCooldownTimer = wasCombo ? ComboEndCooldown : AttackCooldown;
+		EndAttack();
 	}
 
 	/// <summary>Called by Hitbox when it overlaps an enemy hurtbox — check for pogo.</summary>
@@ -326,7 +562,11 @@ public partial class Player : CharacterBody2D
 		_state = PlayerState.Damaged;
 		_knockbackTimer = KnockbackDuration;
 
-		// End any active attack
+		// End any active attack/combo
+		_comboStep = 0;
+		_comboWindowTimer = 0;
+		_comboQueued = false;
+		_attackHitbox.Damage = 1 + WeaponBonus;
 		if (_attackVisual.Visible)
 		{
 			EndAttack();
@@ -369,6 +609,89 @@ public partial class Player : CharacterBody2D
 		}
 	}
 
+	private void ProcessDashInput()
+	{
+		_dashCooldownTimer -= (float)GetPhysicsProcessDeltaTime();
+
+		if (Input.IsActionJustPressed("dash") && _dashCooldownTimer <= 0
+			&& _gameState.HasAbility("Dash") && _state != PlayerState.Dashing)
+		{
+			bool onFloor = IsOnFloor();
+			if (onFloor || !_usedAirDash)
+			{
+				StartDash(onFloor);
+			}
+		}
+	}
+
+	private void StartDash(bool onFloor)
+	{
+		_state = PlayerState.Dashing;
+		_dashDirection = _facingDirection;
+		_dashTimer = DashDuration;
+		_dashCooldownTimer = DashCooldown;
+		_dashAfterimageTimer = 0;
+		_healthComponent.ForceInvincible(DashDuration);
+
+		if (!onFloor)
+		{
+			_usedAirDash = true;
+		}
+
+		// End any active attack
+		if (_attackVisual.Visible)
+		{
+			EndAttack();
+		}
+
+		_audio?.Play("dash");
+		_effects?.SpawnParticles(GlobalPosition, ParticleType.DashTrail);
+	}
+
+	private void ProcessDash(float dt)
+	{
+		_dashTimer -= dt;
+
+		// Move at dash speed, zero gravity
+		Velocity = new Vector2(_dashDirection * DashSpeed, 0);
+		MoveAndSlide();
+
+		// Spawn afterimage every 0.03s
+		_dashAfterimageTimer -= dt;
+		if (_dashAfterimageTimer <= 0)
+		{
+			_dashAfterimageTimer = 0.03f;
+			SpawnDashAfterimage();
+		}
+
+		if (_dashTimer <= 0)
+		{
+			EndDash();
+		}
+	}
+
+	private void EndDash()
+	{
+		_state = PlayerState.Normal;
+		// Carry momentum at normal speed, zero vertical
+		Velocity = new Vector2(_dashDirection * Speed, 0);
+	}
+
+	private void SpawnDashAfterimage()
+	{
+		var afterimage = new Sprite2D();
+		afterimage.Texture = _sprite.SpriteFrames?.GetFrameTexture(_sprite.Animation, _sprite.Frame);
+		afterimage.Position = GlobalPosition + new Vector2(0, -12);
+		afterimage.FlipH = _sprite.FlipH;
+		afterimage.Modulate = new Color(0.4f, 0.7f, 1f, 0.5f);
+		afterimage.ZIndex = -1;
+		GetTree().CurrentScene.AddChild(afterimage);
+
+		var tween = afterimage.CreateTween();
+		tween.TweenProperty(afterimage, "modulate:a", 0f, 0.15f);
+		tween.TweenCallback(Callable.From(afterimage.QueueFree));
+	}
+
 	private void OnDied()
 	{
 		_state = PlayerState.Dead;
@@ -383,6 +706,112 @@ public partial class Player : CharacterBody2D
 		_effects?.Shake(6f, 0.4f);
 	}
 
+	private void SetupAnimations()
+	{
+		var frames = new SpriteFrames();
+
+		// Idle (2 frames, 3 fps for slow bob)
+		frames.AddAnimation("idle");
+		frames.SetAnimationSpeed("idle", 3);
+		frames.SetAnimationLoop("idle", true);
+		var idle = SpriteFactory.PlayerIdle();
+		foreach (var tex in idle)
+			frames.AddFrame("idle", tex);
+
+		// Run (4 frames, 10 fps)
+		frames.AddAnimation("run");
+		frames.SetAnimationSpeed("run", 10);
+		frames.SetAnimationLoop("run", true);
+		var run = SpriteFactory.PlayerRun();
+		foreach (var tex in run)
+			frames.AddFrame("run", tex);
+
+		// Jump (1 frame)
+		frames.AddAnimation("jump");
+		frames.SetAnimationSpeed("jump", 1);
+		frames.SetAnimationLoop("jump", false);
+		frames.AddFrame("jump", SpriteFactory.PlayerJump());
+
+		// Fall (1 frame)
+		frames.AddAnimation("fall");
+		frames.SetAnimationSpeed("fall", 1);
+		frames.SetAnimationLoop("fall", false);
+		frames.AddFrame("fall", SpriteFactory.PlayerFall());
+
+		// Attack forward (used for all 3 combo steps)
+		frames.AddAnimation("attack_forward");
+		frames.SetAnimationSpeed("attack_forward", 1);
+		frames.SetAnimationLoop("attack_forward", false);
+		frames.AddFrame("attack_forward", SpriteFactory.PlayerAttackForward());
+
+		// Attack up
+		frames.AddAnimation("attack_up");
+		frames.SetAnimationSpeed("attack_up", 1);
+		frames.SetAnimationLoop("attack_up", false);
+		frames.AddFrame("attack_up", SpriteFactory.PlayerAttackUp());
+
+		// Attack down
+		frames.AddAnimation("attack_down");
+		frames.SetAnimationSpeed("attack_down", 1);
+		frames.SetAnimationLoop("attack_down", false);
+		frames.AddFrame("attack_down", SpriteFactory.PlayerAttackDown());
+
+		// Dash
+		frames.AddAnimation("dash");
+		frames.SetAnimationSpeed("dash", 1);
+		frames.SetAnimationLoop("dash", false);
+		frames.AddFrame("dash", SpriteFactory.PlayerDash());
+
+		// Wall slide
+		frames.AddAnimation("wall_slide");
+		frames.SetAnimationSpeed("wall_slide", 1);
+		frames.SetAnimationLoop("wall_slide", false);
+		frames.AddFrame("wall_slide", SpriteFactory.PlayerWallSlide());
+
+		// Damaged
+		frames.AddAnimation("damaged");
+		frames.SetAnimationSpeed("damaged", 1);
+		frames.SetAnimationLoop("damaged", false);
+		frames.AddFrame("damaged", SpriteFactory.PlayerDamaged());
+
+		// Remove the default animation that SpriteFrames creates
+		if (frames.HasAnimation("default"))
+			frames.RemoveAnimation("default");
+
+		_sprite.SpriteFrames = frames;
+		_sprite.Play("idle");
+	}
+
+	private void UpdateAnimation()
+	{
+		string anim;
+
+		if (_state == PlayerState.Dead || _state == PlayerState.Damaged)
+			anim = "damaged";
+		else if (_state == PlayerState.Dashing)
+			anim = "dash";
+		else if (_state == PlayerState.Attacking)
+		{
+			anim = _attackDir switch
+			{
+				AttackDirection.Up => "attack_up",
+				AttackDirection.Down => "attack_down",
+				_ => "attack_forward",
+			};
+		}
+		else if (_isWallSliding)
+			anim = "wall_slide";
+		else if (!IsOnFloor())
+			anim = Velocity.Y < 0 ? "jump" : "fall";
+		else if (Mathf.Abs(Velocity.X) > 10f)
+			anim = "run";
+		else
+			anim = "idle";
+
+		if (_sprite.Animation != anim)
+			_sprite.Play(anim);
+	}
+
 	/// <summary>Called by World after death respawn.</summary>
 	public void Respawn()
 	{
@@ -392,6 +821,17 @@ public partial class Player : CharacterBody2D
 		_coyoteTimer = 0;
 		_jumpBufferTimer = 0;
 		_attackCooldownTimer = 0;
+		_isWallSliding = false;
+		_wallDirection = 0;
+		_wallJumpInputLockTimer = 0;
+		_dashTimer = 0;
+		_dashCooldownTimer = 0;
+		_usedAirDash = false;
+		_comboStep = 0;
+		_comboWindowTimer = 0;
+		_comboQueued = false;
+		_gameState.WeaponTier = 1;
+		_attackHitbox.Damage = 1;
 		_sprite.Visible = true;
 		_sprite.Modulate = new Color(1, 1, 1, 1);
 		_hurtbox.SetDeferred("monitorable", true);

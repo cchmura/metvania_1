@@ -6,15 +6,18 @@ public partial class Flyer : EnemyBase
 {
 	private const float IdleBobAmplitude = 8f;
 	private const float IdleBobFrequency = 2f;
-	private const float AggroRange = 120f;
-	private const float AggroSpeed = 60f;
+	private const float AggroRange = 100f;
+	private const float AggroSpeed = 50f;
+	private const float ReturnSpeed = 50f;
 
 	private Vector2 _homePosition;
 	private float _bobTimer;
 	private Player _target;
+	private bool _wasAggro;
 
 	protected override void EnemyInit()
 	{
+		Sprite.Texture = SpriteFactory.FlyerSprite();
 		_homePosition = GlobalPosition;
 	}
 
@@ -49,23 +52,30 @@ public partial class Flyer : EnemyBase
 			// Move toward player
 			var dir = (_target.GlobalPosition - GlobalPosition).Normalized();
 			GlobalPosition += dir * AggroSpeed * dt;
+			_wasAggro = true;
 		}
 		else
 		{
-			// Idle bob at home position
-			float bobY = Mathf.Sin(_bobTimer * IdleBobFrequency * Mathf.Tau) * IdleBobAmplitude;
-			GlobalPosition = _homePosition + new Vector2(0, bobY);
+			// Smoothly return to home position, then bob
+			float distToHome = GlobalPosition.DistanceTo(_homePosition);
+			if (_wasAggro && distToHome > 2f)
+			{
+				var returnDir = (_homePosition - GlobalPosition).Normalized();
+				GlobalPosition += returnDir * ReturnSpeed * dt;
+			}
+			else
+			{
+				_wasAggro = false;
+				float bobY = Mathf.Sin(_bobTimer * IdleBobFrequency * Mathf.Tau) * IdleBobAmplitude;
+				GlobalPosition = _homePosition + new Vector2(0, bobY);
+			}
 		}
 
 		// Face player if aggro
 		if (aggro && _target != null)
 		{
 			int dir = _target.GlobalPosition.X > GlobalPosition.X ? 1 : -1;
-			Sprite.Scale = new Vector2(dir, 1);
-			if (dir == -1)
-				Sprite.Position = new Vector2(6, -6);
-			else
-				Sprite.Position = new Vector2(-6, -6);
+			Sprite.FlipH = (dir == -1);
 		}
 	}
 }

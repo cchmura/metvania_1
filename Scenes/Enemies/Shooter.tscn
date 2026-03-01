@@ -1,0 +1,49 @@
+[gd_scene format=3 uid="uid://shooter00001"]
+
+[ext_resource type="Script" path="res://Scenes/Enemies/Shooter.cs" id="1"]
+[ext_resource type="Script" path="res://Scripts/Components/HealthComponent.cs" id="2"]
+[ext_resource type="Script" path="res://Scripts/Components/Hitbox.cs" id="3"]
+[ext_resource type="Script" path="res://Scripts/Components/Hurtbox.cs" id="4"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_body"]
+size = Vector2(12, 12)
+
+[node name="Shooter" type="CharacterBody2D"]
+collision_layer = 4
+collision_mask = 1
+script = ExtResource("1")
+ContactDamage = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -6)
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Sprite" type="Sprite2D" parent="."]
+position = Vector2(0, -6)
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("2")
+MaxHealth = 2
+InvincibilityDuration = 0.2
+
+[node name="ContactHitbox" type="Area2D" parent="."]
+collision_layer = 16
+collision_mask = 32
+monitoring = true
+script = ExtResource("3")
+Damage = 1
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ContactHitbox"]
+position = Vector2(0, -6)
+shape = SubResource("RectangleShape2D_body")
+
+[node name="Hurtbox" type="Area2D" parent="."]
+collision_layer = 64
+collision_mask = 0
+monitorable = true
+monitoring = false
+script = ExtResource("4")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Hurtbox"]
+position = Vector2(0, -6)
+shape = SubResource("RectangleShape2D_body")
