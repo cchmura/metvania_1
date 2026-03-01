@@ -324,6 +324,8 @@ public partial class World : Node2D
 		var health = _player.GetNodeOrNull<HealthComponent>("HealthComponent");
 		if (health != null)
 		{
+			health.MaxHealth = _gameState.MaxHealth;
+			health.Reset();
 			health.Died += OnPlayerDied;
 		}
 	}

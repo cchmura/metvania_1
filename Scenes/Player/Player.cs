@@ -21,31 +21,31 @@ public partial class Player : CharacterBody2D
 	}
 
 	// Movement constants
-	private const float Speed = 200f;
-	private const float Acceleration = 1200f;
-	private const float Friction = 1000f;
-	private const float Gravity = 800f;
-	private const float JumpImpulse = -400f;
+	private const float Speed = 120f;
+	private const float Acceleration = 900f;
+	private const float Friction = 1400f;
+	private const float Gravity = 650f;
+	private const float JumpImpulse = -290f;
 	private const float JumpReleaseMultiplier = 0.5f;
 	private const float CoyoteTime = 0.1f;
 	private const float JumpBufferTime = 0.1f;
 
 	// Wall slide/jump constants
-	private const float WallSlideMaxSpeed = 50f;
-	private const float WallJumpHorizontalImpulse = 200f;
-	private const float WallJumpVerticalImpulse = -350f;
+	private const float WallSlideMaxSpeed = 35f;
+	private const float WallJumpHorizontalImpulse = 150f;
+	private const float WallJumpVerticalImpulse = -270f;
 	private const float WallJumpInputLockDuration = 0.12f;
 
 	// Dash constants
-	private const float DashSpeed = 800f;
+	private const float DashSpeed = 550f;
 	private const float DashDuration = 0.15f;
 	private const float DashCooldown = 0.4f;
 
 	// Combat constants
 	private const float AttackActiveDuration = 0.25f;
 	private const float AttackCooldown = 0.35f;
-	private const float PogoImpulse = -350f;
-	private const float KnockbackSpeed = 150f;
+	private const float PogoImpulse = -260f;
+	private const float KnockbackSpeed = 110f;
 	private const float KnockbackDuration = 0.2f;
 	private const float InvincibilityFlashRate = 0.08f;
 

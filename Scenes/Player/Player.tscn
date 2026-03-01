@@ -22,7 +22,7 @@ position = Vector2(0, -12)
 
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("2")
-MaxHealth = 5
+MaxHealth = 20
 InvincibilityDuration = 1.0
 
 [node name="AttackHitbox" type="Area2D" parent="."]

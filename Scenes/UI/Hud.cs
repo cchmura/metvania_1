@@ -43,8 +43,8 @@ public partial class Hud : CanvasLayer
 	private int _sfxPercent = 100;
 	private int _musicPercent = 100;
 
-	private const int PipSize = 6;
-	private const int PipGap = 2;
+	private const int PipSize = 4;
+	private const int PipGap = 1;
 
 	public override void _Ready()
 	{

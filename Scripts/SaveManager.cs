@@ -19,7 +19,7 @@ public partial class SaveManager : Node
 		public float PlayerX { get; set; }
 		public float PlayerY { get; set; }
 		public string CurrentRoom { get; set; } = "";
-		public int MaxHealth { get; set; } = 5;
+		public int MaxHealth { get; set; } = 20;
 		public bool BossDefeated { get; set; }
 		public List<string> VisitedRooms { get; set; } = new();
 		public int WeaponTier { get; set; } = 1;

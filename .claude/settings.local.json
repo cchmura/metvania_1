@@ -6,7 +6,8 @@
       "Bash(dotnet build:*)",
       "Bash(python3:*)",
       "Bash(grep:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "WebSearch"
     ]
   }
 }

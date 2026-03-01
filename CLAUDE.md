@@ -51,18 +51,17 @@ Single "main" room, 120×11 tiles, 5 zones (24 cols each):
 - Down-slash pogo: bounce off enemies, reset double jump
 - Weapon power-up: breakable candles drop weapon upgrades, 5 tiers max, resets to 1 on death
 - Effective damage: BaseDamage + (WeaponTier - 1). At tier 5: forward hits deal 5/5/6
-- Player: 5 HP (upgradeable), 1s invincibility on hit, knockback, death → respawn
+- Player: 20 HP (upgradeable), 1s invincibility on hit, knockback, death → respawn
 - Enemies: Crawler (2 HP, 35 speed), Flyer (1 HP, 100px aggro, 50 speed), Shooter (2 HP, projectile every 2.0s at 130px), Charger (3 HP, 280 charge speed), Shielder (4 HP, 25 speed, frontal deflect), Dropper (1 HP, 24px trigger), Bat (1 HP, 80px/s sine-wave flight, despawns at 500px), Skeleton (2 HP, 30px/s patrol, bone arc projectile every 2.5s at 110px), Ghost (2 HP, 35px/s drift, 90px aggro, phases through walls, semi-transparent), Knight (3 HP, 20px/s patrol, 0.3s wind-up flash, 0.5s spear thrust, 1.5s cooldown)
 - Boss: Guardian (12 HP, phase 2 at 6 HP: 450 charge + jump slam + shockwave + double projectile, 0.8s recover)
 - Breakable candles: 1 HP destructible objects, drop weapon upgrade pickups (auto-despawn 10s)
 
 ## Physics
-- Jump impulse: -400 (100px single jump, 200px double jump)
-- Gravity: 800, Speed: 200, Acceleration: 1200, Friction: 1000
+- Jump impulse: -290 (~4 tile jump height), Gravity: 650, Speed: 120, Accel: 900, Friction: 1400
 - Coyote time: 0.1s, Jump buffer: 0.1s, Variable jump height on early release
-- Pogo impulse: -350
-- Wall slide max speed: 50, Wall jump: -350 vertical + 200 horizontal, 0.12s input lock
-- Dash: 800 speed, 0.15s duration, 0.4s cooldown, i-frames during, once per air + resets on land/wall
+- Pogo impulse: -260
+- Wall slide max speed: 35, Wall jump: -270 vertical + 150 horizontal, 0.12s input lock
+- Dash: 550 speed, 0.15s duration, 0.4s cooldown, i-frames during, once per air + resets on land/wall
 
 ## Input Actions
 - move_left (A/Left), move_right (D/Right), move_up (W/Up), move_down (S/Down)

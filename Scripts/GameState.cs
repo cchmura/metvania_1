@@ -9,7 +9,7 @@ public partial class GameState : Node
 	public HashSet<string> CollectedItems { get; set; } = new();
 	public Vector2 PlayerSpawnPosition { get; set; } = new(40, 136);
 	public string CurrentRoom { get; set; } = "The Depths";
-	public int MaxHealth { get; set; } = 5;
+	public int MaxHealth { get; set; } = 20;
 	public bool BossDefeated { get; set; }
 	public int ActiveSaveSlot { get; set; }
 	public int WeaponTier { get; set; } = 1;
@@ -50,7 +50,7 @@ public partial class GameState : Node
 		CollectedItems.Clear();
 		PlayerSpawnPosition = new Vector2(40, 136);
 		CurrentRoom = "The Depths";
-		MaxHealth = 5;
+		MaxHealth = 20;
 		BossDefeated = false;
 		WeaponTier = 1;
 	}
